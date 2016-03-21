@@ -97,3 +97,16 @@
   * Fields (like fetching field in update)
 
 ## 2. Packet descriptions
+### TCP
+  * Type (1 octet)
+  * SM IP (4 octets)
+  * SC IP (4 octets)
+  * Payload
+    * Open key exchange
+      * Request or answer
+      * Key Size (4 octets)
+      * Key
+    * Registration
+      * User password (128 octets)
+      * Method number
+      * Methods
