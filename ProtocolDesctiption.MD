@@ -1,7 +1,24 @@
 #SNP  - SkyNet Protocol description
 
-## 1. Packet descriptions
-### 1.1 UDP packet
+## 1. Structure descriptions
+### 1.1 Device
+* ID (1 octet)
+* Name (128 octets)
+* Field number
+* Fields
+
+### 1.2 Field
+* Name (128 octets)
+* Type (1 octet)
+* Value (Size depends on type)
+
+### 1.3 Field type
+0-6 - Type
+
+7 - Writable
+
+## 2. Packet descriptions
+### 2.1 UDP packet
 * Type (1 octet)
  * 1 - Search SD
  * 2 - Answer SD
@@ -11,7 +28,7 @@
 * Device id(1 octet)
 * Field
 
-### 1.2 TCP packet
+### 2.2 TCP packet
 * Type (1 octet)
  * 4 - Open key exchange
  * 5 - Register SD
