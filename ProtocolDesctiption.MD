@@ -1,63 +1,106 @@
 #SNP  - SkyNet Protocol description
 
-## 1. Structure descriptions
-### 1.1 Device
-* ID (1 octet)
-* Name (128 octets)
-* Field number
-* Fields
+## 1. Abbreviations
+* SM - Main server
+* SD - Device server
+* SC - Control server
 
-### 1.2 Field
-* Name (128 octets)
-* Type (1 octet)
-* Value (Size depends on type)
+## 2. Structure descriptions
+### 2.1 Device
+{
+ID : int,
+Name : string,
+Fields : [Field]
+}
 
-### 1.3 Field type
-0-6 - Type
+### 2.2 Field
+{
+Name : string,
+Type : int,
+Writable : bool,
+Value : as Type
+}
 
-7 - Writable
+Types:
+1. Bool
+2. Int
+3. String
 
-## 2. Packet descriptions
-### 2.1 UDP packet
-* Type (1 octet)
- * 1 - Search SD
- * 2 - Answer SD
- * 3 - Field change
-* IP SM (4 octets)
-* IP SD (4 octets)
-* Device id(1 octet)
-* Field
+## 3. Packet descriptions
+### 3.1 Packet types
+1. SSD - Search SD
+2. ASD - Announce SD
+3. FCH - Field change
+4. KEX - Open key exchange
+5. RSD - Register SD
+6. GDF - Get device fields
+7. UDF - Update device fields
 
-### 2.2 TCP packet
-* Type (1 octet)
- * 4 - Open key exchange
- * 5 - Register SD
- * 6 - Get device data
- * 7 - Update device state
-* IP SM (4 octets)
-* IP SD (4 octets)
-* Payload
-  * Open key exchange
-    * Request or answer
-    * Key Size (4 octets)
-    * Key
-  * Registration
-    * PIN (4 octets)
-    * Devices number (1 octet)
-    * Devices
-      * ID (1 octet)
-      * Device name (128 octets)
-      * Field number (1 octet)
-      * Fileds
-  * Get device data
-    * Request or answer (1 octet)
-    * ID (1 octet)
-    * Device
-  * Set device field
-    * Request or answer (1 octet)
-    * Device ID (1 octet)
-    * Field
- 
+### 3.2 UDP packet
+
+1. Search SD
+{
+	Type : "SSD",
+	SMIP : string
+}
+
+2. Anounce SD
+{
+	Type : "ASD",
+	SDIP : string,
+	Name : string
+}
+
+3. Field change
+{
+	Type : "FCH",
+	SDIP : string,
+	DevId : int,
+	Field : Field
+}
+
+### 3.3 TCP packet
+
+4. Open key exchange
+{
+	Type : "KEX",
+	KEY : string
+}
+
+5. Register SD
+  * Request
+  {
+	Type : "RSD", 
+	PIN : int
+  }
+  * Response
+  {
+	Type : "RSD",
+	Devices : [Device]
+  }
+
+6. Get device data
+  * Request
+  {
+	Type : "GDF",
+	DevId : int
+  }
+  * Response
+  {
+	Type : "GDF",
+	Device : Device
+  }
+  
+7. Update device data
+	* Request
+	{
+		Type : "UDF",
+		DevId : int,
+		Field : string,
+		Value : like field type
+	}
+
+	
 #SNCP - SkyNet Control Protocol
 ## 1. Structure descriptions
 ### 1.1 Method
