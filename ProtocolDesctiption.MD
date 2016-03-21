@@ -58,3 +58,42 @@
     * Device ID (1 octet)
     * Field
  
+#SNCP - SkyNet Control Protocol
+## 1. Structure descriptions
+### 1.1 Method
+* Name(128 octets)
+* Field number(1 octet)
+* Fields
+ 
+### 1.2 Script
+* Name(128 octets)
+* ID(4 octets)
+* Triger
+* Action
+
+### 1.3 Triger
+* Device ID (4 octets)
+* Field name (128 octets)
+* Change type(1 octet)
+  * 0 - Change
+  * 1 - More than
+  * 2 - Less than
+  * 3 - Equal
+* Value (Depends on type)
+ 
+### 1.4 Action
+* Type (1 octet)
+  * 0 - Field update
+  * 1 - Method
+* Field update
+  * Updating Device ID (4 octets)
+  * Updating Field name (128 octets)
+  * By field(1) or by value(0) (1 octet)
+  * Value (Depends on type)
+  * Fetching Device ID
+  * Fetching Field name(types should be equal)
+* Method
+  * Method ID
+  * Fields (like fetching field in update)
+
+## 2. Packet descriptions
