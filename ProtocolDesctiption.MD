@@ -6,22 +6,26 @@
 * SC - Control server
 
 ## 2. Structure descriptions
-### 2.1 Device
-{
-ID : int,
-Name : string,
-Fields : [Field]
+### 2.1 Device  
+```
+{  
+	ID : int,  
+	Name : string,  
+	Fields : [Field]  
 }
+```
 
 ### 2.2 Field
+```
 {
-Name : string,
-Type : int,
-Writable : bool,
-Value : as Type
+	Name : string,
+	Type : int,
+	Writable : bool,
+	Value : as Type
 }
+```
+### 2.3 Field types:
 
-Types:
 1. Bool
 2. Int
 3. String
@@ -38,68 +42,91 @@ Types:
 
 ### 3.2 UDP packet
 
-1. Search SD
+1 Search SD
+```
 {
 	Type : "SSD",
 	SMIP : string
 }
-
-2. Anounce SD
+```
+2 Anounce SD  
+```
 {
 	Type : "ASD",
 	SDIP : string,
 	Name : string
 }
-
-3. Field change
+```
+3 Field change  
+```
 {
 	Type : "FCH",
 	SDIP : string,
 	DevId : int,
 	Field : Field
 }
+```
 
 ### 3.3 TCP packet
 
-4. Open key exchange
+4 Open key exchange
+```
 {
 	Type : "KEX",
 	KEY : string
 }
+```
 
-5. Register SD
+5 Register SD
   * Request
-  {
-	Type : "RSD", 
-	PIN : int
-  }
+```
+	{
+		Type : "RSD", 
+		PIN : int
+	}
+```
   * Response
-  {
-	Type : "RSD",
-	Devices : [Device]
-  }
+```
+	{
+		Type : "RSD",
+		Devices : [Device]
+	}
+```
 
-6. Get device data
+6 Get device data
   * Request
-  {
-	Type : "GDF",
-	DevId : int
-  }
+```
+	{
+		Type : "GDF",
+		DevId : int
+	}
+```
   * Response
-  {
-	Type : "GDF",
-	Device : Device
-  }
+```
+	{
+		Type : "GDF",
+		Device : Device
+	}
+```
   
-7. Update device data
-	* Request
+7 Update device data
+  * Request
+```
 	{
 		Type : "UDF",
 		DevId : int,
 		Field : string,
 		Value : like field type
 	}
-
+```
+  * Response
+```
+	{
+		Type : "UDF",
+		DevId : int,
+		Field : Field
+	}
+```
 	
 #SNCP - SkyNet Control Protocol
 ## 1. Structure descriptions
