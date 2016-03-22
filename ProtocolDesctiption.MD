@@ -130,52 +130,74 @@
 #SNCP - SkyNet Control Protocol
 ## 1. Structure descriptions
 ### 1.1 Method
-* Name(128 octets)
-* Field number(1 octet)
-* Fields
+```
+	{
+		Name : string,
+		Fields : [Field]
+	}
+```
  
 ### 1.2 Script
-* Name(128 octets)
-* ID(4 octets)
-* Triger
-* Action
+```
+	{
+		Id : int,
+		Name : string,
+		Trigger : Trigger,
+		Action : Action
+	}
+```
 
-### 1.3 Triger
-* Device ID (4 octets)
-* Field name (128 octets)
-* Change type(1 octet)
-  * 0 - Change
-  * 1 - More than
-  * 2 - Less than
-  * 3 - Equal
-* Value (Depends on type)
+### 1.3 Trigger
+```
+	{
+		Type : "VCH",
+		DevId : int,
+		FieldNme : string,
+		ChangeType : string {"", ">", "<", "="},
+		Value : Depends on value type
+	}
+	{
+		Type : "AND",
+		Trigger1 : Trigger,
+		Trigger2 : Trigger
+	}
+```
  
 ### 1.4 Action
-* Type (1 octet)
-  * 0 - Field update
-  * 1 - Method
-* Field update
-  * Updating Device ID (4 octets)
-  * Updating Field name (128 octets)
-  * By field(1) or by value(0) (1 octet)
-  * Value (Depends on type)
-  * Fetching Device ID
-  * Fetching Field name(types should be equal)
-* Method
-  * Method ID
-  * Fields (like fetching field in update)
+```
+	{
+		Type : "CHF",
+		DevID : int,
+		FieldName : string,
+		Value : FieldValue
+	}
+	{
+		Type : "MTH",
+		MethodId : int,
+		Fields : [FieldValue]
+	}
+```
+  
+### 1.5 FieldValue
+```
+	{
+		Type : "VAL",
+		Value : Depends on field type
+	}
+	{
+		Type : "FLD",
+		DevId : int,
+		FieldName : string
+	}
+```
 
 ## 2. Packet descriptions
-### TCP
-  * Type (1 octet)
-  * SM IP (4 octets)
-  * SC IP (4 octets)
-  * Payload
-    * Open key exchange
-      * Request or answer
-      * Key Size (4 octets)
-      * Key
-    * Registration
-      * User password (128 octets)
-      * Method number
-      * Methods
+### 2.1
+### TCP packet
+1 SC connect to SD
+```
+	{
+		Type : "SCC"
+	}
+```
+
