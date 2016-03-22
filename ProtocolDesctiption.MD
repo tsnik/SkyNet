@@ -46,14 +46,13 @@
 ```
 {
 	Type : "SSD",
-	SMIP : string
+	Name : string
 }
 ```
 2 Anounce SD  
 ```
 {
 	Type : "ASD",
-	SDIP : string,
 	Name : string
 }
 ```
