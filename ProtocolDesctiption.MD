@@ -132,6 +132,8 @@
 ### 1.1 Method
 ```
 	{
+		MethodId : int,
+		SD : SD,
 		Name : string,
 		Fields : [Field]
 	}
@@ -191,13 +193,277 @@
 	}
 ```
 
-## 2. Packet descriptions
-### 2.1
-### TCP packet
-1 SC connect to SD
+### 1.6 SD
 ```
 	{
-		Type : "SCC"
+		IP : string,
+		Name : string
 	}
 ```
 
+### 1.7 Device  
+```
+{  
+	ID : int,  
+	Name : string,  
+	Fields : [Field],
+	SD : SD
+}
+```
+
+### 1.8 Field
+```
+{
+	Name : string,
+	Type : int,
+	Writable : bool,
+	Value : as Type
+}
+```
+
+## 2. Packet descriptions
+### 2.1 Packet types
+1. SCM - SC connect to SM
+2. GDL - Get device list
+3. GDF - Get device fields
+4. UDF - Update device fields
+5. SSD - Search SD
+6. RSD - Register SD
+7. RND - Rename Device
+8. GMT - Get methods
+9. GSC - Get scripts
+10. CSC - Create script
+11. ESC - Edit script
+11. DSC - Delete script
+12. CMT - Call method (The only request sent from SM to SC)
+
+In packets 5 - 12 SC should also pass Password (Special admin password)
+
+### 2.2 TCP packet
+1 SC connect to SM
+ * Request
+```
+	{
+		Type : "SCM",
+		Password : string,
+		Methods : [Method],
+		Name : string
+	}
+```
+  * Response
+```
+	{
+		Type : "SCM",
+		Result : "OK",
+		Name : string
+	}
+```
+
+2 Get device list
+* Request
+```
+	{
+		Type : "GDL"
+	}
+```
+* Response
+```
+	{
+		Type : "GDL"
+		Devices : [Device]
+	}
+```
+
+3 Get device fields
+* Request
+```
+	{
+		Type : "GDF",
+		DevId : int
+	}
+```
+* Response
+```
+	{
+		Type : "GDF",
+		Device : Device
+	}
+```
+4 Update device field
+* Request
+```
+	{
+		Type : "UDF",
+		DevId : int,
+		FieldName : string,
+		Value : depends on field type
+	}
+```
+* Reponse
+```
+	{
+		Type : "UDF",
+		DevId : int,
+		Field : Field
+	}
+```
+
+5 Search SD
+* Request
+```
+	{
+		Type : "SSD"
+	}
+```
+* Response
+```
+	{
+		Type : "SSD",
+		Servers : [SD]
+	}
+```
+
+6 Register SD
+* Request
+```
+	{
+		Type : "RSD",
+		IP : string,
+		PIN : int
+	}
+```
+* Response
+```
+	{
+		Type : "RSD",
+		Devices : [Device]
+	}
+```
+
+7 Rename device
+* Request
+```
+	{
+		Type : "RND",
+		DevId : int,
+		Name : string
+	}
+```
+* Response
+```
+	{
+		Type : "RND",
+		Device : Device
+	}
+```
+
+8 Get methods
+* Request
+```
+	{
+		Type : "GMT"	
+	}
+```
+* Response
+```
+	{
+		Type : "GMT",
+		Methods : [Method]
+	}
+```
+
+9 Get scripts
+
+9.1 All scripts
+* Request
+```
+	{
+		Type : "GSC"
+	}
+```
+* Response
+```
+	{
+		Type : "GSC",
+		Scripts : [Script]
+	}
+```
+9.2 Script by id
+* Request
+```
+	{
+		Type : "GSC",
+		ScriptId : int
+	}
+```
+* Response
+```
+	{
+		Type : "GSC",
+		Script : Script
+	}
+```
+10 Create script
+* Request
+```
+	{
+		Type : "CSC",
+		Script : Script
+	}
+```
+* Response
+```
+	{
+		Type : "CSC",
+		Script : Script
+	}
+```
+
+11 Edit script
+* Request
+```
+	{
+		Type : "CSC",
+		Script : Script
+	}
+```
+* Response
+```
+	{
+		Type : "CSC",
+		Script : Script
+	}
+```
+
+12 Delete script
+* Request
+```
+	{
+		Type : "DSC",
+		ScriptId : int
+	}
+```
+* Response
+```
+	{
+		Type : "DSC",
+		ScriptId : int,
+		Status : "DELETED"
+	}
+```
+
+13 Call method
+* Request
+```
+	{
+		Type : "CMT",
+		Method : Method
+	}
+```
+* Response
+```
+	{
+		Type : "CMT",
+		Status : "EXECUTED"
+	}
+```
