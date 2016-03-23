@@ -56,6 +56,8 @@
 	Name : string
 }
 ```
+### 3.3 TCP packet
+
 3 Field change  
 ```
 {
@@ -65,8 +67,6 @@
 	Field : Field
 }
 ```
-
-### 3.3 TCP packet
 
 4 Open key exchange
 ```
