@@ -11,19 +11,21 @@ class SNProtocol(NetstringReceiver):
         if "reqid" in packet:
             if len(packet["reqid"]) > 2:
                 type = packet["reqid"][:2]
-                reqid = int(packet["reqid"][2:])
+                reqid = packet["reqid"][2:]
                 if type == "RQ":
                     self.factory.service.hadleRequest(packet, reqid)
                 elif type == "RE":
                     if reqid in self.requests:
                         self.factory.requests[reqid].callback(packet)
+                        self.factory.requests.pop(reqid)
 
     def sendRequest(self, request):
-        request["reqid"] = "RQ{0}".format(str(SNProtocol.id_counter))
+        reqid = str(SNProtocol.id_counter)
+        request["reqid"] = "RQ{0}".format(reqid)
         self._sendPacket(request)
         d = defer.Deferred()
         d.addCallback(self.errorChecker)
-        self.factory.service.requests[SNProtocol.id_counter] = d
+        self.factory.service.requests[reqid] = d
         SNProtocol.id_counter += 1
         return d
 
