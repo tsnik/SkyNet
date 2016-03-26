@@ -7,8 +7,16 @@ class SNProtocol(NetstringReceiver):
     id_counter = 0
 
     def stringReceived(self, string):
-        json_str = json.loads(string)
-        self.factory.evaluatePacket(json_str)
+        packet = json.loads(string)
+        if "reqid" in packet:
+            if len(packet["reqid"]) > 2:
+                type = packet["reqid"][:2]
+                reqid = int(packet["reqid"][2:])
+                if type == "RQ":
+                    self.factory.service.hadleRequest(packet, reqid)
+                elif type == "RE":
+                    if reqid in self.requests:
+                        self.factory.requests[reqid].callback(packet)
 
     def sendRequest(self, request):
         request["reqid"] = "RQ{0}".format(str(SNProtocol.id_counter))
