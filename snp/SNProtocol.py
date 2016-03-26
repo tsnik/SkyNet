@@ -20,13 +20,11 @@ class SNProtocol(NetstringReceiver):
                         self.factory.requests.pop(reqid)
 
     def sendRequest(self, request):
-        reqid = str(SNProtocol.id_counter)
+        reqid = str(self.id_counter)
         request["reqid"] = "RQ{0}".format(reqid)
         self._sendPacket(request)
-        d = defer.Deferred()
-        d.addCallback(self.errorChecker)
-        self.factory.service.requests[reqid] = d
-        SNProtocol.id_counter += 1
+        d = self.createDeferred(reqid)
+        self.id_counter += 1
         return d
 
     def sendResponse(self, request, reqid):
@@ -36,6 +34,18 @@ class SNProtocol(NetstringReceiver):
     def _sendPacket(self, request):
         json_str = json.dumps(request)
         self.sendString(json_str)
+
+    def connectionMade(self):
+        if hasattr(self.factory, 'deferred'):
+            if self.factory.deferred is not None:
+                d, self.factory.deferred = self.factory.deferred, None
+                d.callback(self)
+
+    def createDeferred(self, reqid):
+        d = defer.Deferred()
+        d.addCallback(self.errorChecker)
+        self.factory.service.requests[reqid] = d
+        return d
 
     def errorChecker(self, packet):
         # TODO: Implement error checker
