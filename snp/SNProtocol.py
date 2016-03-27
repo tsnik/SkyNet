@@ -3,6 +3,12 @@ from twisted.protocols.basic import NetstringReceiver
 import json
 
 
+class SNError(Exception):
+    def __init__(self, *args, **kwargs):
+        Exception.__init__(self, args, kwargs)
+        self.code = args[1]
+        self.request = args[2]
+
 class SNProtocol(NetstringReceiver):
     id_counter = 0
 
@@ -48,5 +54,6 @@ class SNProtocol(NetstringReceiver):
         return d
 
     def errorChecker(self, packet):
-        # TODO: Implement error checker
+        if "Error" in packet:
+            raise SNError("", int(packet["Error"]), packet["Request"])
         return packet
