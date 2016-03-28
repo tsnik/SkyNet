@@ -1,5 +1,5 @@
 from twisted.internet.protocol import ClientFactory
-from snp import SNProtocol
+from snp.SNProtocol import SNProtocol
 
 
 class SNProtocolClientFactory(ClientFactory):
