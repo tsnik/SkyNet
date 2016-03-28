@@ -9,6 +9,7 @@ class SNError(Exception):
         self.code = args[1]
         self.request = args[2]
 
+
 class SNProtocol(NetstringReceiver):
     id_counter = 0
 
@@ -19,7 +20,7 @@ class SNProtocol(NetstringReceiver):
                 type = packet["reqid"][:2]
                 reqid = packet["reqid"][2:]
                 if type == "RQ":
-                    self.factory.service.hadleRequest(packet, reqid)
+                    self.factory.service.hadleRequest(packet, reqid, self)
                 elif type == "RE":
                     if reqid in self.requests:
                         self.factory.requests[reqid].callback(packet)
@@ -46,6 +47,7 @@ class SNProtocol(NetstringReceiver):
             if self.factory.deferred is not None:
                 d, self.factory.deferred = self.factory.deferred, None
                 d.callback(self)
+        self.factory.service.connectionMade(self)
 
     def createDeferred(self, reqid):
         d = defer.Deferred()
