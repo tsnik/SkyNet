@@ -1,5 +1,5 @@
 from twisted.internet.protocol import ServerFactory
-from snp.SNProtocol import SNProtocol
+from snp import SNProtocol
 
 
 class SNProtocolServerFactory(ServerFactory):
