@@ -1,4 +1,5 @@
-from snp.SNPService import SNPService
+from snp import SNPService, SNProtocolClientFactory
+from DB import DB
 
 
 class DeviceService(SNPService):
@@ -7,7 +8,12 @@ class DeviceService(SNPService):
         self.config = config
 
     def startService(self):
-        #TODO: connect to all deviceServers fom db
+        def callb(res):
+            from twisted.internet import reactor
+            for dev in res:
+                fact = SNProtocolClientFactory(self)
+                reactor.connectTCP(dev[1], dev[2], fact)
+        DB.get_device_servers().addCallback(callb)
         pass
 
     def connectionMade(self, protocol):
