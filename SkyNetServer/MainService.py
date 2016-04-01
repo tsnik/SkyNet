@@ -13,3 +13,6 @@ class MainService(service.MultiService):
         self.deviceService = DeviceService(self.config)
         self.addService(self.controlService)
         self.addService(self.deviceService)
+
+    def field_updated(self, devid, field):
+        pass

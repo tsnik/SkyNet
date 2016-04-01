@@ -45,3 +45,16 @@ class DB:
         DB._check_db_ready()
         txn.execute('''SELECT * FROM DeviceServers''')
         return txn.fetchall()
+
+    @staticmethod
+    def get_local_devid_from_remote(ip, devid):
+        db = DB.get_db()
+        return db.runInteraction(DB._get_local_devid_from_remote, ip, devid)
+
+    @staticmethod
+    def _get_local_devid_from_remote(txn, ip, devid):
+        DB._check_db_ready()
+        txn.execute('''SELECT id from DeviceServers WHERE ip = ? ''', ip)
+        devsid = txn.fetchone()[0]
+        txn.execute('''SELECT id from Devices WHERE device_server = ? AND device_id = ?''', devsid, devid)
+        return txn.fetchone()[0]

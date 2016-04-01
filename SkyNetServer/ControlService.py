@@ -2,6 +2,7 @@ from snp import SNPService, SNProtocolServerFactory
 from twisted.application import internet
 from DB import DB
 
+
 class ControlService(SNPService):
 
     def __init__(self, config):
@@ -11,7 +12,6 @@ class ControlService(SNPService):
         self.iface = config.iface
         self.db = DB.get_db()
         self.controllers = {}
-        print(self.port)
         self.ControlServer = internet.TCPServer(self.port, self.factory, interface=self.iface)
 
     def connectionMade(self, protocol):
