@@ -16,3 +16,6 @@ class SNPService(service.Service):
 
     def connectionMade(self, protocol):
         pass
+
+    def clientConnectionFailed(self, connector, reason):
+        pass

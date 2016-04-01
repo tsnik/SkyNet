@@ -43,10 +43,6 @@ class SNProtocol(NetstringReceiver):
         self.sendString(json_str)
 
     def connectionMade(self):
-        if hasattr(self.factory, 'deferred'):
-            if self.factory.deferred is not None:
-                d, self.factory.deferred = self.factory.deferred, None
-                d.callback(self)
         self.factory.service.connectionMade(self)
 
     def createDeferred(self, reqid):
