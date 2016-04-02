@@ -20,8 +20,13 @@ class ValueTrigger(Trigger):
         self.value = value
 
     def check_trigger(self, field):
-        # TODO
-        pass
+        if self.type == ValueTrigger.Type.EQUAL:
+            return self.value == field["Value"]
+        elif self.type == ValueTrigger.Type.GREATER:
+            return field["Value"] > self.value
+        elif self.type == ValueTrigger.Type.LESS:
+            return field["Value"] < self.value
+        return False
 
 
 class LogicalTrigger(Trigger):
