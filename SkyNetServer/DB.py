@@ -58,3 +58,15 @@ class DB:
         devsid = txn.fetchone()[0]
         txn.execute('''SELECT id from Devices WHERE device_server = ? AND device_id = ?''', devsid, devid)
         return txn.fetchone()[0]
+
+    @staticmethod
+    def get_field_value(devid, field):
+        db = DB.get_db()
+        return db.runInteraction(DB._get_field_value, devid, field)
+
+    @staticmethod
+    def _get_field_value(txn, devid, field):
+        DB._check_db_ready()
+        txn.execute('''SELECT value FROM RawData WHERE devid = ? AND field = ? ORDER BY id DESC''', devid, field)
+        return txn.fetchone()[0]
+
