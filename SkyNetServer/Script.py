@@ -1,5 +1,6 @@
 from enum import Enum
-
+from twisted.internet import defer
+from DB import DB
 
 class Trigger:
     def check_trigger(self, field):
@@ -8,10 +9,39 @@ class Trigger:
 
 class ValueTrigger(Trigger):
     class Type(Enum):
-        DEFAULT = 0
+        NOTEQUAL = 0
         EQUAL = 1
         GREATER = 2
         LESS = 3
+
+    @staticmethod
+    def check_notequal(res):
+        field = res[0]
+        field_value = res[1]
+        return field["Value"] != field_value
+
+    @staticmethod
+    def check_equal(res):
+        field = res[0]
+        field_value = res[1]
+        return field["Value"] == field_value
+
+    @staticmethod
+    def check_greater(res):
+        field = res[0]
+        field_value = res[1]
+        return field["Value"] > field_value
+
+    @staticmethod
+    def check_less(res):
+        field = res[0]
+        field_value = res[1]
+        return field["Value"] < field_value
+
+    type_methods = {Type.NOTEQUAL: check_notequal,
+                     Type.EQUAL: check_equal,
+                     Type.GREATER: check_greater,
+                     Type.LESS: check_less}
 
     def __init__(self, devid, field_name, type, value):
         self.devid = devid
@@ -20,13 +50,9 @@ class ValueTrigger(Trigger):
         self.value = value
 
     def check_trigger(self, field):
-        if self.type == ValueTrigger.Type.EQUAL:
-            return self.value == field["Value"]
-        elif self.type == ValueTrigger.Type.GREATER:
-            return field["Value"] > self.value
-        elif self.type == ValueTrigger.Type.LESS:
-            return field["Value"] < self.value
-        return False
+        d = self.value.get_value(field)
+        d.addCallback(ValueTrigger.type_methods[self.type])
+        return d
 
 
 class LogicalTrigger(Trigger):
@@ -43,3 +69,72 @@ class ANDTrigger(LogicalTrigger):
 class ORTrigger(LogicalTrigger):
     def check_trigger(self, field):
         return self.trigger1.check_trigger(field) or self.trigger2.check_trigger(field)
+
+
+class Action:
+    def execute(self):
+        pass
+
+
+class ChangeFieldAction(Action):
+    def __init__(self, devid, field):
+        self.devid = 0
+        self.field = ""
+        self.value = 0
+
+    def execute(self):
+        def callb(res):
+            # TODO: Call to remote server
+            pass
+        d = self.value.get_value()
+        d.addCallback(callb)
+        pass
+
+
+class MethodAction(Action):
+    def execute(self):
+        pass
+
+
+class FieldValue:
+    def get_value(self, field=""):
+        """
+        Gets value of FieldValue
+        :param field:
+        :rtype: Deferred
+        """
+        pass
+
+
+class StaticFieldValue(FieldValue):
+    def __init__(self, value):
+        self.value = value
+
+    def get_value(self, field=""):
+        d = defer.Deferred()
+        d.callback((field, self.value))
+        return d
+
+
+class DynamicFieldValue(FieldValue):
+    def __init__(self, devid, field_name):
+        self.devid = devid
+        self.field_name = field_name
+
+
+class LocalFieldValue(DynamicFieldValue):
+    def get_value(self, field=""):
+        def callb(res):
+            return field, res
+        d = DB.get_field_value(self.devid, self.field_name)
+        d.addCallback(callb)
+        return d
+
+
+class RemoteFieldValue(DynamicFieldValue):
+    def get_value(self, field=""):
+        def callb(res):
+            return field, res
+        d = defer.Deferred()  # TODO: Request to remote server to get value
+        d.addCallback(callb)
+        return d
