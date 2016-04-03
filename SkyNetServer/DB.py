@@ -3,14 +3,14 @@ from twisted.enterprise import adbapi
 
 
 class DB:
-    filename = "skynet.cfg"
+    filename = "skynet.db"
     _db = None
     _ready = False
 
     @staticmethod
     def get_db():
         if DB._db is None:
-            DB._db = adbapi.ConnectionPool("sqlite3", 'skynet.db')
+            DB._db = adbapi.ConnectionPool("sqlite3", DB.filename)
             d = DB._db.runInteraction(DB.init_db)
             d.addCallback(DB._init_db_callback)
         return DB._db
