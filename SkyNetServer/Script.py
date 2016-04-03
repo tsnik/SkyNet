@@ -5,7 +5,9 @@ from DB import DB
 
 class Trigger:
     def check_trigger(self, field):
-        return False
+        d = defer.Deferred()
+        d.callback(False)
+        return d
 
 
 class ValueTrigger(Trigger):
@@ -16,33 +18,29 @@ class ValueTrigger(Trigger):
         LESS = 3
 
     @staticmethod
-    def check_notequal(res):
-        field = res[0]
-        field_value = res[1]
+    def check_notequal(res, field):
+        field_value = res
         return field["Value"] != field_value
 
     @staticmethod
-    def check_equal(res):
-        field = res[0]
-        field_value = res[1]
+    def check_equal(res, field):
+        field_value = res
         return field["Value"] == field_value
 
     @staticmethod
-    def check_greater(res):
-        field = res[0]
-        field_value = res[1]
+    def check_greater(res, field):
+        field_value = res
         return field["Value"] > field_value
 
     @staticmethod
-    def check_less(res):
-        field = res[0]
-        field_value = res[1]
+    def check_less(res, field):
+        field_value = res
         return field["Value"] < field_value
 
     type_methods = {Type.NOTEQUAL: check_notequal,
-                     Type.EQUAL: check_equal,
-                     Type.GREATER: check_greater,
-                     Type.LESS: check_less}
+                    Type.EQUAL: check_equal,
+                    Type.GREATER: check_greater,
+                    Type.LESS: check_less}
 
     def __init__(self, devid, field_name, type, value):
         self.devid = devid
@@ -50,10 +48,23 @@ class ValueTrigger(Trigger):
         self.type = type
         self.value = value
 
-    def check_trigger(self, field):
-        d = self.value.get_value(field)
-        d.addCallback(ValueTrigger.type_methods[self.type])
+    def get_field(self, field):
+        if self.devid == field["DevId"] and self.field_name == field["Name"]:
+            d = defer.Deferred()
+            d.callback(field)
+        else:
+            d = DB.get_field_value(self.devid, self.field_name)
+            d.addCallback(lambda res: {"Value": res})
         return d
+
+    @defer.inlineCallbacks
+    def check_trigger(self, field):
+        try:
+            field = yield self.get_field(field)
+            value = yield self.value.get_value(field)
+            yield ValueTrigger.type_methods[self.type](value, field)
+        except:  # TODO: Narrow exception
+            yield False
 
 
 class LogicalTrigger(Trigger):
@@ -61,15 +72,25 @@ class LogicalTrigger(Trigger):
         self.trigger1 = trigger1
         self.trigger2 = trigger2
 
+    @staticmethod
+    def logic_check(res):
+        return False
+
+    def check_trigger(self, field):
+        d = defer.gatherResults([self.trigger1.check_trigger(field), self.trigger2.check_trigger(field)])
+        d.addCallback(self.logic_check)
+
 
 class ANDTrigger(LogicalTrigger):
-    def check_trigger(self, field):
-        return self.trigger1.check_trigger(field) and self.trigger2.check_trigger(field)
+    @staticmethod
+    def logic_check(res):
+        return res[0] and res[1]
 
 
 class ORTrigger(LogicalTrigger):
-    def check_trigger(self, field):
-        return self.trigger1.check_trigger(field) or self.trigger2.check_trigger(field)
+    @staticmethod
+    def logic_check(res):
+        return res[0] or res[1]
 
 
 class Action:
@@ -87,6 +108,7 @@ class ChangeFieldAction(Action):
         def callb(res):
             # TODO: Call to remote server
             pass
+
         d = self.value.get_value()
         d.addCallback(callb)
         return d
@@ -108,10 +130,9 @@ class MultiAction(Action):
 
 
 class FieldValue:
-    def get_value(self, field=""):
+    def get_value(self, ):
         """
         Gets value of FieldValue
-        :param field:
         :rtype: Deferred
         """
         pass
@@ -121,9 +142,9 @@ class StaticFieldValue(FieldValue):
     def __init__(self, value):
         self.value = value
 
-    def get_value(self, field=""):
+    def get_value(self):
         d = defer.Deferred()
-        d.callback((field, self.value))
+        d.callback(self.value)
         return d
 
 
@@ -134,20 +155,14 @@ class DynamicFieldValue(FieldValue):
 
 
 class LocalFieldValue(DynamicFieldValue):
-    def get_value(self, field=""):
-        def callb(res):
-            return field, res
+    def get_value(self):
         d = DB.get_field_value(self.devid, self.field_name)
-        d.addCallback(callb)
         return d
 
 
 class RemoteFieldValue(DynamicFieldValue):
-    def get_value(self, field=""):
-        def callb(res):
-            return field, res
+    def get_value(self):
         d = defer.Deferred()  # TODO: Request to remote server to get value
-        d.addCallback(callb)
         return d
 
 
@@ -161,6 +176,7 @@ class Script:
             if res:
                 return self.action.execute()
             return
+
         d = self.trigger.check_trigger(field)
         d.addCallback(callb)
         return d
