@@ -89,6 +89,7 @@ class DB:
     @staticmethod
     def get_scripts():
         db = DB.get_db()
+        return db.runInteraction(DB._get_scripts)
 
     @staticmethod
     def _get_scripts(txn):
