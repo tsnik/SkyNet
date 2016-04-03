@@ -97,6 +97,16 @@ class MethodAction(Action):
         pass
 
 
+class MultiAction(Action):
+    def __init__(self, actions):
+        self.actions = actions
+
+    @defer.inlineCallbacks
+    def execute(self):
+        for action in self.actions:
+            yield action.execute()
+
+
 class FieldValue:
     def get_value(self, field=""):
         """
