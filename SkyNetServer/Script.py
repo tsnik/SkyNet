@@ -2,6 +2,7 @@ from enum import Enum
 from twisted.internet import defer
 from DB import DB
 
+
 class Trigger:
     def check_trigger(self, field):
         return False
@@ -88,7 +89,7 @@ class ChangeFieldAction(Action):
             pass
         d = self.value.get_value()
         d.addCallback(callb)
-        pass
+        return d
 
 
 class MethodAction(Action):
@@ -136,5 +137,20 @@ class RemoteFieldValue(DynamicFieldValue):
         def callb(res):
             return field, res
         d = defer.Deferred()  # TODO: Request to remote server to get value
+        d.addCallback(callb)
+        return d
+
+
+class Script:
+    def __init__(self, trigger, action):
+        self.trigger = trigger
+        self.action = action
+
+    def doif(self, field):
+        def callb(res):
+            if res:
+                return self.action.execute()
+            return
+        d = self.trigger.check_trigger(field)
         d.addCallback(callb)
         return d
