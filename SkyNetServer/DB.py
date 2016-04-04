@@ -100,3 +100,28 @@ class DB:
         for s in ss:
             scripts[s[0]] = pickle.loads(s[1])
         return scripts
+
+    @staticmethod
+    def get_id_from_ip(ip, control=False):
+        db = DB.get_db()
+        return db.runInteraction(DB._get_id_from_ip, ip, control)
+
+    @staticmethod
+    def _get_id_from_ip(txn, ip, control):
+        DB._check_db_ready()
+        if control:
+            table = "ControlServers"
+        else:
+            table = "DeviceServers"
+        txn.execute('''SELECT id FROM ? WHERE ip = ?''', table, ip)
+        return txn.fetchone()[0]
+
+    @staticmethod
+    def update_devices(ip, devices):
+        db = DB.get_db()
+        return db.runInteraction(DB._update_devices, ip, devices)
+
+    @staticmethod
+    def _update_devices(txn, ip, devices):
+        #  TODO: check if DeviceServer in db and add it if not
+        pass
