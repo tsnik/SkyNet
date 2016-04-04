@@ -5,8 +5,8 @@ from DB import DB
 class DeviceService(SNPService):
 
     def __init__(self, config):
+        SNPService.__init__(self)
         self.config = config
-        self.dev_servers = {}
 
     def startService(self):
         def callb(res):
@@ -15,10 +15,6 @@ class DeviceService(SNPService):
                 fact = SNProtocolClientFactory(self)
                 reactor.connectTCP(dev[1], dev[2], fact)
         DB.get_device_servers().addCallback(callb)
-
-    def connectionMade(self, protocol):
-        ip = protocol.transport.getPeer().host
-        self.dev_servers[ip] = protocol
 
     def type_fch(self, request, reqid, protocol):
         ip = protocol.transport.getPeer().host
@@ -35,5 +31,5 @@ class DeviceService(SNPService):
         def callb(res):
             protocol.sendResponse({"Name": self.config.name}, reqid)
         ip = protocol.transport.getPeer().host
-        self.dev_servers[ip] = protocol
+        self.peers[ip] = protocol
         DB.update_devices(ip, request["Devices"]).addCallback(callb)
