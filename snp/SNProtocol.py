@@ -38,6 +38,10 @@ class SNProtocol(NetstringReceiver):
         request["reqid"] = "RE{0}".format(str(reqid))
         self._sendPacket(request)
 
+    def sendError(self, code, request):
+        r = {"Error": code, "Request": request}
+        self._sendPacket(r)
+
     def _sendPacket(self, request):
         json_str = json.dumps(request)
         self.sendString(json_str)
