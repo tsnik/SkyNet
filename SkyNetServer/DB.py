@@ -135,3 +135,20 @@ class DB:
     def _update_methods(txn, ip, name, methods):
         # TODO: check if ControlServer in db and it if not
         pass
+
+    @staticmethod
+    def get_devices():
+        db = DB.get_db()
+        return db.runInteraction(DB._get_devices)
+
+    @staticmethod
+    def _get_devices(txn):
+        DB._check_db_ready()
+        txn.execute('''SELECT Devices.name, Devices.id, DeviceServers.ip, DeviceServers.name AS DeviceServerName
+FROM Devices, DeviceServers WHERE Devices.device_server=DeviceServers.id''')
+        res = txn.fetchall()
+        devices = []
+        for line in res:
+            devices.append({"ID": line["id"], "Name": line["name"],
+                            "SD": {"Name": line["DeviceServerName"], "IP": line["ip"]}})
+        return devices

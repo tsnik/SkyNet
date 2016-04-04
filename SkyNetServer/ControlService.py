@@ -20,7 +20,7 @@ class ControlService(SNPService):
         def callb(res):
             DB.update_methods(ip, res["Name"], res["Methods"])
             self.peers[ip] = protocol
-        #TODO: Request to BD
+        #  TODO: Request to BD
         protocol.sendRequest({"Type": "WEL", "Name": self.config.name}).addCallback(callb)
 
     def startService(self):
@@ -30,4 +30,15 @@ class ControlService(SNPService):
         self.ControlServer.stopService()
 
     def type_gdl(self, request, reqid, protocol):
+        def callb(res):
+            response = {"Devices": res}
+            protocol.sendResponse(response, reqid)
+        DB.get_devices().addCallback(callb)
+
+    def type_gdf(self, request, reqid, protocol):
+        #  TODO: Request to device server
+        pass
+
+    def type_udf(self, request, reqid, protocol):
+        #  TODO: Request to device server
         pass
