@@ -125,3 +125,13 @@ class DB:
     def _update_devices(txn, ip, devices):
         #  TODO: check if DeviceServer in db and add it if not
         pass
+
+    @staticmethod
+    def update_methods(ip, name, methods):
+        db = DB.get_db()
+        return db.runInteraction(DB._update_methods, ip, name, methods)
+
+    @staticmethod
+    def _update_methods(txn, ip, name, methods):
+        # TODO: check if ControlServer in db and it if not
+        pass
