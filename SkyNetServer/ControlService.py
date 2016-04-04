@@ -42,3 +42,42 @@ class ControlService(SNPService):
     def type_udf(self, request, reqid, protocol):
         #  TODO: Request to device server
         pass
+
+    def check_pass(self, request, protocol):
+        if "Password" in request:
+            if request["Password"] == self.config.adminpass:
+                return True
+        protocol.sendError(404, request)
+        return False
+
+    def type_ssd(self, request, reqid, protocol):
+        if self.check_pass(request, protocol):
+            pass
+
+    def type_rsd(self, request, reqid, protocol):
+        if self.check_pass(request, protocol):
+            pass
+
+    def type_rnd(self, request, reqid, protocol):
+        if self.check_pass(request, protocol):
+            pass
+
+    def type_gmt(self, request, reqid, protocol):
+        if self.check_pass(request, protocol):
+            pass
+
+    def type_gsc(self, request, reqid, protocol):
+        if self.check_pass(request, protocol):
+            pass
+
+    def type_csc(self, request, reqid, protocol):
+        if self.check_pass(request, protocol):
+            pass
+
+    def type_esc(self, request, reqid, protocol):
+        if self.check_pass(request, protocol):
+            pass
+
+    def type_dsc(self, request, reqid, protocol):
+        if self.check_pass(request, protocol):
+            pass
