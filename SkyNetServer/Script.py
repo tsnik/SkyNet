@@ -9,6 +9,13 @@ class Trigger:
         d.callback(False)
         return d
 
+    @staticmethod
+    def create_from_dict(jdic):
+        try:
+            return trigger_types[jdic["Type"]].create_from_dict(jdic)
+        except KeyError:
+            raise ValueError("No such trigger type exists")
+
 
 class ValueTrigger(Trigger):
     class Type(Enum):
@@ -36,6 +43,14 @@ class ValueTrigger(Trigger):
     def check_less(res, field):
         field_value = res
         return field["Value"] < field_value
+
+    @staticmethod
+    def create_from_dict(jdict):
+        change_type = getattr(ValueTrigger.Type, jdict["ChangeType"], None)
+        if change_type is None:
+            raise ValueError("No such change type exists")
+        return ValueTrigger(jdict["DevId"], jdict["FieldName"], change_type,
+                            FieldValue.create_from_dict(jdict["Value"]))
 
     type_methods = {Type.NOTEQUAL: check_notequal,
                     Type.EQUAL: check_equal,
@@ -86,23 +101,40 @@ class ANDTrigger(LogicalTrigger):
     def logic_check(res):
         return res[0] and res[1]
 
+    @staticmethod
+    def create_from_dict(jdict):
+        return ANDTrigger(Trigger.create_from_dict(jdict["Trigger1"]),
+                          Trigger.create_from_dict(jdict["Trigger2"]))
+
 
 class ORTrigger(LogicalTrigger):
     @staticmethod
     def logic_check(res):
         return res[0] or res[1]
 
+    @staticmethod
+    def create_from_dict(jdict):
+        return ORTrigger(Trigger.create_from_dict(jdict["Trigger1"]),
+                         Trigger.create_from_dict(jdict["Trigger2"]))
+
 
 class Action:
+    @staticmethod
+    def create_from_dict(jdic):
+        try:
+            return action_types[jdic["Type"]].create_from_dict(jdic)
+        except KeyError:
+            raise ValueError("No such action type exists")
+
     def execute(self):
         pass
 
 
 class ChangeFieldAction(Action):
-    def __init__(self, devid, field):
-        self.devid = 0
-        self.field = ""
-        self.value = 0
+    def __init__(self, devid, field, value):
+        self.devid = devid
+        self.field = field
+        self.value = value
 
     def execute(self):
         def callb(res):
@@ -112,6 +144,11 @@ class ChangeFieldAction(Action):
         d = self.value.get_value()
         d.addCallback(callb)
         return d
+
+    @staticmethod
+    def create_from_dict(jdic):
+        return ChangeFieldAction(jdic["DevId"], jdic["FieldName"],
+                                 FieldValue.create_from_dict(jdic["Value"]))
 
 
 class MethodAction(Action):
@@ -128,6 +165,11 @@ class MultiAction(Action):
         for action in self.actions:
             yield action.execute()
 
+    @staticmethod
+    def create_from_dict(jdic):
+        actions = list(map(Action.create_from_dic), jdic["Actions"])
+        return MultiAction(actions)
+
 
 class FieldValue:
     def get_value(self, ):
@@ -137,15 +179,30 @@ class FieldValue:
         """
         pass
 
+    @staticmethod
+    def create_from_dict(jdic):
+        try:
+            return field_value_types[jdic["Type"]].create_from_dict(jdic)
+        except KeyError:
+            raise ValueError("No such field value type exists")
+
 
 class StaticFieldValue(FieldValue):
+    valueTypes = {int: 'int', str: 'str', bool: 'bool'}
+
     def __init__(self, value):
+        if type(value) not in StaticFieldValue.valueTypes:
+            raise ValueError("Wrong value type")
         self.value = value
 
     def get_value(self):
         d = defer.Deferred()
         d.callback(self.value)
         return d
+
+    @staticmethod
+    def create_from_dict(jdic):
+        return StaticFieldValue(jdic["Value"])
 
 
 class DynamicFieldValue(FieldValue):
@@ -159,11 +216,19 @@ class LocalFieldValue(DynamicFieldValue):
         d = DB.get_field_value(self.devid, self.field_name)
         return d
 
+    @staticmethod
+    def create_from_dict(jdic):
+        return LocalFieldValue(jdic["DevId"], jdic["FieldName"])
+
 
 class RemoteFieldValue(DynamicFieldValue):
     def get_value(self):
         d = defer.Deferred()  # TODO: Request to remote server to get value
         return d
+
+    @staticmethod
+    def create_from_dict(jdic):
+        return RemoteFieldValue(jdic["DevId"], jdic["FieldName"])
 
 
 class Script:
@@ -180,3 +245,19 @@ class Script:
         d = self.trigger.check_trigger(field)
         d.addCallback(callb)
         return d
+
+    @staticmethod
+    def create_from_dict(jdic):
+        return Script(Trigger.create_from_dict(jdic["Trigger"]),
+                      Action.create_from_dict(jdic["Action"]))
+
+
+action_types = {"CHF": ChangeFieldAction,
+                "MTH": MethodAction,
+                "MUA": MultiAction}
+field_value_types = {"VAL": StaticFieldValue,
+                     "LFV": LocalFieldValue,
+                     "RFV": RemoteFieldValue}
+trigger_types = {"VCH": ValueTrigger,
+                 "AND": ANDTrigger,
+                 "OR": ORTrigger}
