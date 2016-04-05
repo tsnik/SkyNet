@@ -85,6 +85,7 @@ class DB:
     def _add_script(txn, s):
         DB._check_db_ready()
         txn.execute('''INSERT INTO Scripts (script) VALUES (?)''', s)
+        return txn.lastrowid()
 
     @staticmethod
     def get_scripts():

@@ -1,6 +1,7 @@
 from snp import SNPService, SNProtocolServerFactory
 from twisted.application import internet
 from DB import DB
+from snp.Script import Script
 
 
 class ControlService(SNPService):
@@ -72,7 +73,11 @@ class ControlService(SNPService):
 
     def type_csc(self, request, reqid, protocol):
         if self.check_pass(request, protocol):
-            pass
+            def callb(res):
+                protocol.sendResponse(res.to_dict(), reqid)
+            script = Script.create_from_dict(request["Script"])
+            d = self.parent.create_script(script)
+            d.addCallback(callb)
 
     def type_esc(self, request, reqid, protocol):
         if self.check_pass(request, protocol):
