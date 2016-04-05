@@ -31,6 +31,10 @@
 3. String
 
 ## 3. Packet descriptions
+Every packet has to have field "reqid":
+* Request - RQ + uniq id
+* Response - Re + same id as was in request
+
 ### 3.1 Packet types
 1. SSD - Search SD
 2. ASD - Announce SD
@@ -156,7 +160,7 @@
 		DevId : int,
 		FieldNme : string,
 		ChangeType : string {"", ">", "<", "="},
-		Value : Depends on value type
+		Value : FieldValue
 	}
 	{
 		Type : "AND",
@@ -187,8 +191,13 @@
 		Value : Depends on field type
 	}
 	{
-		Type : "FLD",
+		Type : "LFV",
 		DevId : int,
+		FieldName : string
+	}
+	{
+		Type : "RFV",
+		DevId: int,
 		FieldName : string
 	}
 ```
