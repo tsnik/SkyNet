@@ -1,13 +1,19 @@
 from enum import Enum
 from twisted.internet import defer
 from DB import DB
+import json
 
 
 class Trigger:
+    jtype = "DEF"
+
     def check_trigger(self, field):
         d = defer.Deferred()
         d.callback(False)
         return d
+
+    def to_dict(self):
+        return {"Type": self.jtype}
 
     @staticmethod
     def create_from_dict(jdic):
@@ -18,11 +24,7 @@ class Trigger:
 
 
 class ValueTrigger(Trigger):
-    class Type(Enum):
-        NOTEQUAL = 0
-        EQUAL = 1
-        GREATER = 2
-        LESS = 3
+    jtype = "VCH"
 
     @staticmethod
     def check_notequal(res, field):
@@ -46,16 +48,18 @@ class ValueTrigger(Trigger):
 
     @staticmethod
     def create_from_dict(jdict):
-        change_type = getattr(ValueTrigger.Type, jdict["ChangeType"], None)
-        if change_type is None:
+        if jdict["ChangeType"] not in value_trigger_types:
             raise ValueError("No such change type exists")
-        return ValueTrigger(jdict["DevId"], jdict["FieldName"], change_type,
+        return ValueTrigger(jdict["DevId"], jdict["FieldName"], jdict["ChangeType"],
                             FieldValue.create_from_dict(jdict["Value"]))
 
-    type_methods = {Type.NOTEQUAL: check_notequal,
-                    Type.EQUAL: check_equal,
-                    Type.GREATER: check_greater,
-                    Type.LESS: check_less}
+    def to_dict(self):
+        jdic = Trigger.to_dict(self)
+        jdic["DevId"] = self.devid
+        jdic["FieldName"] = self.field_name
+        jdic["ChangeType"] = self.type
+        jdic["Value"] = self.value.to_dict()
+        return jdic
 
     def __init__(self, devid, field_name, type, value):
         self.devid = devid
@@ -77,7 +81,8 @@ class ValueTrigger(Trigger):
         try:
             field = yield self.get_field(field)
             value = yield self.value.get_value(field)
-            yield ValueTrigger.type_methods[self.type](value, field)
+            method = getattr(ValueTrigger, "check_{0}".format(self.type))
+            yield method(value, field)
         except:  # TODO: Narrow exception
             yield False
 
@@ -95,8 +100,16 @@ class LogicalTrigger(Trigger):
         d = defer.gatherResults([self.trigger1.check_trigger(field), self.trigger2.check_trigger(field)])
         d.addCallback(self.logic_check)
 
+    def to_dict(self):
+        jdic = Trigger.to_dict(self)
+        jdic["Trigger1"] = self.trigger1.to_dict()
+        jdic["Trigger2"] = self.trigger2.to_dict()
+        return jdic
+
 
 class ANDTrigger(LogicalTrigger):
+    jtype = "AND"
+
     @staticmethod
     def logic_check(res):
         return res[0] and res[1]
@@ -108,6 +121,8 @@ class ANDTrigger(LogicalTrigger):
 
 
 class ORTrigger(LogicalTrigger):
+    jtype = "OR"
+
     @staticmethod
     def logic_check(res):
         return res[0] or res[1]
@@ -119,6 +134,8 @@ class ORTrigger(LogicalTrigger):
 
 
 class Action:
+    jtype = "DEF"
+
     @staticmethod
     def create_from_dict(jdic):
         try:
@@ -129,8 +146,13 @@ class Action:
     def execute(self):
         pass
 
+    def to_dict(self):
+        return {"Type": self.jtype}
+
 
 class ChangeFieldAction(Action):
+    jtype = "CHF"
+
     def __init__(self, devid, field, value):
         self.devid = devid
         self.field = field
@@ -145,6 +167,13 @@ class ChangeFieldAction(Action):
         d.addCallback(callb)
         return d
 
+    def to_dict(self):
+        jdict = Action.to_dict(self)
+        jdict["DevId"] = self.devid
+        jdict["FieldName"] = self.field
+        jdict["Value"] = self.value.to_dict()
+        return jdict
+
     @staticmethod
     def create_from_dict(jdic):
         return ChangeFieldAction(jdic["DevId"], jdic["FieldName"],
@@ -157,6 +186,8 @@ class MethodAction(Action):
 
 
 class MultiAction(Action):
+    jtype = "MUA"
+
     def __init__(self, actions):
         self.actions = actions
 
@@ -165,6 +196,11 @@ class MultiAction(Action):
         for action in self.actions:
             yield action.execute()
 
+    def to_dict(self):
+        rdict = Action.to_dict(self)
+        rdict["Actions"] = [action.to_dict() for action in self.actions]
+        return rdict
+
     @staticmethod
     def create_from_dict(jdic):
         actions = list(map(Action.create_from_dic), jdic["Actions"])
@@ -172,12 +208,17 @@ class MultiAction(Action):
 
 
 class FieldValue:
+    jtype = "DEF"
+
     def get_value(self, ):
         """
         Gets value of FieldValue
         :rtype: Deferred
         """
         pass
+
+    def to_dict(self):
+        return {"Type": self.jtype}
 
     @staticmethod
     def create_from_dict(jdic):
@@ -188,6 +229,7 @@ class FieldValue:
 
 
 class StaticFieldValue(FieldValue):
+    jtype = "VAL"
     valueTypes = {int: 'int', str: 'str', bool: 'bool'}
 
     def __init__(self, value):
@@ -200,6 +242,10 @@ class StaticFieldValue(FieldValue):
         d.callback(self.value)
         return d
 
+    def to_dict(self):
+        jdic = FieldValue.to_dict(self)
+        jdic["Value"] = self.value
+
     @staticmethod
     def create_from_dict(jdic):
         return StaticFieldValue(jdic["Value"])
@@ -210,8 +256,16 @@ class DynamicFieldValue(FieldValue):
         self.devid = devid
         self.field_name = field_name
 
+    def to_dict(self):
+        jdic = FieldValue.to_dict(self)
+        jdic["DevId"] = self.devid
+        jdic["FieldName"] = self.field_name
+        return jdic
+
 
 class LocalFieldValue(DynamicFieldValue):
+    jtype = "LFV"
+
     def get_value(self):
         d = DB.get_field_value(self.devid, self.field_name)
         return d
@@ -222,6 +276,8 @@ class LocalFieldValue(DynamicFieldValue):
 
 
 class RemoteFieldValue(DynamicFieldValue):
+    jtype = "RFV"
+
     def get_value(self):
         d = defer.Deferred()  # TODO: Request to remote server to get value
         return d
@@ -232,9 +288,11 @@ class RemoteFieldValue(DynamicFieldValue):
 
 
 class Script:
-    def __init__(self, trigger, action):
+    def __init__(self, trigger, action, name, id = 0):
         self.trigger = trigger
         self.action = action
+        self.name = name
+        self.id = id
 
     def doif(self, field):
         def callb(res):
@@ -245,6 +303,15 @@ class Script:
         d = self.trigger.check_trigger(field)
         d.addCallback(callb)
         return d
+
+    def to_dict(self):
+        return {"id": self.id,
+                "Name": self.name,
+                "Trigger": self.trigger.to_dict(),
+                "Action": self.action.to_dict()}
+
+    def to_json(self):
+        return json.dumps(self.to_dict())
 
     @staticmethod
     def create_from_dict(jdic):
@@ -261,3 +328,4 @@ field_value_types = {"VAL": StaticFieldValue,
 trigger_types = {"VCH": ValueTrigger,
                  "AND": ANDTrigger,
                  "OR": ORTrigger}
+value_trigger_types = {"NOTEQUAL", "EQUAL", "LESS", "GREATER"}
