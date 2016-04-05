@@ -39,7 +39,8 @@ class SNProtocol(NetstringReceiver):
         self._sendPacket(request)
 
     def sendError(self, code, request):
-        r = {"Error": code, "Request": request}
+        reqid = request["reqid"][2:]
+        r = {"Error": code, "Request": request, "reqid": "RE{0}".format(str(reqid))}
         self._sendPacket(r)
 
     def _sendPacket(self, request):
