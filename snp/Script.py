@@ -316,7 +316,7 @@ class Script:
     @staticmethod
     def create_from_dict(jdic):
         return Script(Trigger.create_from_dict(jdic["Trigger"]),
-                      Action.create_from_dict(jdic["Action"]))
+                      Action.create_from_dict(jdic["Action"]), jdic["Name"])
 
 
 action_types = {"CHF": ChangeFieldAction,
