@@ -37,8 +37,10 @@ class ControlService(SNPService):
         DB.get_devices().addCallback(callb)
 
     def type_gdf(self, request, reqid, protocol):
-        #  TODO: Request to device server
-        pass
+        def callb(res):
+            protocol.sendResponse({"Type": "GDF", "Device": res}, reqid)
+        d = self.parent.get_device_data(request["DevId"])
+        d.addCallback(callb)
 
     def type_udf(self, request, reqid, protocol):
         #  TODO: Request to device server
