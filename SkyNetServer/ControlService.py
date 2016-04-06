@@ -74,14 +74,18 @@ class ControlService(SNPService):
     def type_csc(self, request, reqid, protocol):
         if self.check_pass(request, protocol):
             def callb(res):
-                protocol.sendResponse(res.to_dict(), reqid)
+                protocol.sendResponse({"Type": "CSC", "Script": res.to_dict()}, reqid)
             script = Script.create_from_dict(request["Script"])
             d = self.parent.create_script(script)
             d.addCallback(callb)
 
     def type_esc(self, request, reqid, protocol):
         if self.check_pass(request, protocol):
-            pass
+            def callb(res):
+                protocol.sendResponse({"Type": "ESC", "Script": res.to_dict()}, reqid)
+            script = Script.create_from_dict(request["Script"])
+            d = self.parent.edit_script(script)
+            d.addCallback(callb)
 
     def type_dsc(self, request, reqid, protocol):
         if self.check_pass(request, protocol):

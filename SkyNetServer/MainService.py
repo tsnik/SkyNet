@@ -28,11 +28,16 @@ class MainService(service.MultiService):
         d = DB.get_scripts()
         d.addCallback(self.script_load)
 
+    def script_changed(self, script):
+        self.scripts[script.id] = script
+        return script
+
     def create_script(self, script):
-        def callb(res):
-            script.id = res
-            self.scripts[res] = script
-            return script
         d = DB.add_script(script)
-        d.addCallback(callb)
+        d.addCallback(self.script_changed)
+        return d
+
+    def edit_script(self, script):
+        d = DB.edit_script(script)
+        d.addCallback(self.script_changed)
         return d
