@@ -69,7 +69,11 @@ class ControlService(SNPService):
 
     def type_gsc(self, request, reqid, protocol):
         if self.check_pass(request, protocol):
-            pass
+            def callb(res):
+                jscripts = [script.to_dict() for script in res]
+                protocol.sendResponse({"Type": "GSC", "Scripts": jscripts}, reqid)
+            d = self.parent.get_scripts()
+            d.addCallback(callb)
 
     def type_csc(self, request, reqid, protocol):
         if self.check_pass(request, protocol):

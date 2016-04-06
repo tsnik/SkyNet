@@ -50,3 +50,8 @@ class MainService(service.MultiService):
         d = DB.delete_script(sid)
         d.addCallback(self.script_deleted)
         return d
+
+    def get_scripts(self):
+        d = DB.get_scripts()
+        d.addCallback(lambda res: res.values())
+        return d
