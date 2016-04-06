@@ -315,8 +315,11 @@ class Script:
 
     @staticmethod
     def create_from_dict(jdic):
+        sid = 0
+        if "Id" in jdic:
+            sid = jdic["Id"]
         return Script(Trigger.create_from_dict(jdic["Trigger"]),
-                      Action.create_from_dict(jdic["Action"]), jdic["Name"])
+                      Action.create_from_dict(jdic["Action"]), jdic["Name"], sid)
 
 
 action_types = {"CHF": ChangeFieldAction,
