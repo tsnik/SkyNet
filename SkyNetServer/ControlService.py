@@ -100,3 +100,7 @@ class ControlService(SNPService):
                 protocol.sendResponse({"Type": "DSC", "ScriptId": res}, reqid)
             d = self.parent.delete_script(request["ScriptId"])
             d.addCallback(callb)
+
+    def callMethod(self, control_server, name, **args):
+        method = {"Name": name, "Fields": args}
+        return self.peers[control_server].sendRequest({"Type": "CMT", "Method": method})
