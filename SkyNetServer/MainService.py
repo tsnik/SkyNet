@@ -32,6 +32,10 @@ class MainService(service.MultiService):
         self.scripts[script.id] = script
         return script
 
+    def script_deleted(self, sid):
+        self.scripts.pop(sid)
+        return sid
+
     def create_script(self, script):
         d = DB.add_script(script)
         d.addCallback(self.script_changed)
@@ -40,4 +44,9 @@ class MainService(service.MultiService):
     def edit_script(self, script):
         d = DB.edit_script(script)
         d.addCallback(self.script_changed)
+        return d
+
+    def delete_script(self, sid):
+        d = DB.delete_script(sid)
+        d.addCallback(self.script_deleted)
         return d

@@ -101,6 +101,17 @@ class DB:
         return script
 
     @staticmethod
+    def delete_script(sid):
+        db = DB.get_db()
+        return db.runInteraction(DB._delete_script, sid)
+
+    @staticmethod
+    def _delete_script(txn, sid):
+        DB._check_db_ready()
+        txn.execute('''DELETE FROM Scripts WHERE id = ?''', sid)
+        return sid
+
+    @staticmethod
     def get_scripts():
         db = DB.get_db()
         return db.runInteraction(DB._get_scripts)

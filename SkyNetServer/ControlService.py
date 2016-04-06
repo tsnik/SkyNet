@@ -89,4 +89,7 @@ class ControlService(SNPService):
 
     def type_dsc(self, request, reqid, protocol):
         if self.check_pass(request, protocol):
-            pass
+            def callb(res):
+                protocol.sendResponse({"Type": "DSC", "ScriptId": res}, reqid)
+            d = self.parent.delete_script(request["ScriptId"])
+            d.addCallback(callb)
