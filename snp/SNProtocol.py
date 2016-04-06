@@ -45,7 +45,7 @@ class SNProtocol(NetstringReceiver):
 
     def _sendPacket(self, request):
         json_str = json.dumps(request)
-        self.sendString(json_str)
+        self.sendString(json_str.encode("ascii"))
 
     def connectionMade(self):
         self.factory.service.connectionMade(self)
@@ -53,7 +53,7 @@ class SNProtocol(NetstringReceiver):
     def createDeferred(self, reqid):
         d = defer.Deferred()
         d.addCallback(self.errorChecker)
-        self.factory.service.requests[reqid] = d
+        self.factory.requests[reqid] = d
         return d
 
     def errorChecker(self, packet):
