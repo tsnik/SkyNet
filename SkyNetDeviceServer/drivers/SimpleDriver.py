@@ -3,7 +3,8 @@ from twisted.internet import defer
 
 
 class SimpleDriver:
-    def __init__(self, updated):
+    def __init__(self, name, updated):
+        self.name = name
         self.updated = updated
 
     def get_device_fields(self):
