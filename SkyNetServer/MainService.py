@@ -55,3 +55,7 @@ class MainService(service.MultiService):
         d = DB.get_scripts()
         d.addCallback(lambda res: res.values())
         return d
+
+    def get_methods(self):
+        d = DB.get_methods()
+        return d

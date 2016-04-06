@@ -1,4 +1,5 @@
 import pickle
+import json
 from twisted.enterprise import adbapi
 
 
@@ -22,7 +23,7 @@ class DB:
         txn.execute('''CREATE TABLE IF NOT EXISTS ControlServers
               (id INTEGER PRIMARY KEY, ip TEXT, name TEXT)''')
         txn.execute('''CREATE TABLE IF NOT EXISTS Methods
-              (id INTEGER PRIMARY KEY, name TEXT, control_server INTEGER)''')
+              (id INTEGER PRIMARY KEY, name TEXT, Arguments TEXT, control_server INTEGER)''')
         txn.execute('''CREATE TABLE IF NOT EXISTS Devices
               (id INTEGER PRIMARY KEY, name TEXT, device_server INTEGER,
               device_id TEXT)''')
@@ -158,8 +159,45 @@ class DB:
 
     @staticmethod
     def _update_methods(txn, ip, name, methods):
-        # TODO: check if ControlServer in db and it if not
-        pass
+        DB._check_db_ready()
+        txn.execute('''SELECT id FROM ControlServers WHERE ip = ?''', ip)
+        r = txn.fetchone()
+        if r is None:
+            txn.execute('''INSERT INTO ControlServers (ip, name) VALUES (?, ?)''', ip, name)
+            cid = txn.lastrowid()
+        else:
+            cid = r["id"]
+        for method in methods:
+            name = method["Name"]
+            args = json.dumps(method["Fields"])
+            txn.execute('''SELECT id FROM Methods WHERE control_server = ?, name = ?''', cid, name)
+            r = txn.fetchone()
+            if r is None:
+                txn.execute("INSERT INTO Methods (name, arguments, control_server) VALUES (?, ?, ?)", name, args, cid)
+            else:
+                mid = r["id"]
+                txn.execute("UPDATE Methods SET arguments = ? WHERE id = ?", args, mid)
+        return
+
+    @staticmethod
+    def get_methods():
+        db = DB.get_db()
+        return db.runInteraction(DB._get_methods)
+
+    @staticmethod
+    def _get_methods(txn):
+        DB._check_db_ready()
+        txn.execute('''SELECT Methods.id, Methods.name, Methods.arguments,
+        ControlServers.name as ControlName, ControlServers.ip as ControlIp
+        WHERE Methods.control_server = ControlServers.id''')
+        methods = txn.fetchall()
+        mres = []
+        for method in methods:
+            tmp = {"MethodId": method['id'], "Name": method['name'], "Fields": json.loads(method["arguments"]),
+                   "SD": {"Name": method["ControlName"],
+                          "IP": method["ControlIp"]}}
+            mres.append(tmp)
+        return mres
 
     @staticmethod
     def get_devices():

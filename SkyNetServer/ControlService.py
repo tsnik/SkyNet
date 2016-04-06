@@ -65,7 +65,10 @@ class ControlService(SNPService):
 
     def type_gmt(self, request, reqid, protocol):
         if self.check_pass(request, protocol):
-            pass
+            def callb(res):
+                protocol.sendResponse({"Type": "GMT", "Methods": res}, reqid)
+            d = self.parent.get_methods()
+            d.addCallback(callb)
 
     def type_gsc(self, request, reqid, protocol):
         if self.check_pass(request, protocol):
