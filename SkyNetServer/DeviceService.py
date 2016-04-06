@@ -33,3 +33,10 @@ class DeviceService(SNPService):
         ip = protocol.transport.getPeer().host
         self.peers[ip] = protocol
         DB.update_devices(ip, request["Devices"]).addCallback(callb)
+
+    def get_device_fields(self, device_server, devid):
+        return self.peers[device_server].sendRequest({"Type": "GDF", "DevId": devid})
+
+    def update_device_field(self, device_server, devid, field, value):
+        return self.peers[device_server].sendRequest({"Type": "UDF", "DevId": devid,
+                                                      "FieldName": field, "Value": value})
