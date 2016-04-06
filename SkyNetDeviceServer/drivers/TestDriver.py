@@ -4,8 +4,8 @@ from twisted.internet import defer
 
 
 class TestDriver(SimpleDriver):
-    def __init__(self, name, updated):
-        SimpleDriver.__init__(self, name, updated)
+    def __init__(self, did, name, updated):
+        SimpleDriver.__init__(self, did, name, updated)
         self.fields = [FieldInfo("Integer", True, 1), FieldInfo("String", True, 'Text'),
                        FieldInfo("Logic", True, False)]
         print("Loaded")
@@ -15,16 +15,18 @@ class TestDriver(SimpleDriver):
         fields = {}
         for field in self.fields:
             fields[field.Name] = field
-        return defer.maybeDeferred(fields)
+        d = defer.Deferred()
+        d.callback(fields)
+        return d
 
     def update_integer(self, value):
         self.fields[0].Value = value
-        self.updated("Integer", self.name, value)
+        self.updated(self, "Integer", value)
 
     def update_string(self, value):
         self.fields[1].Value = value
-        self.updated("String", self.name, value)
+        self.updated(self, "String", value)
 
     def update_logic(self, value):
         self.fields[2].Value = value
-        self.updated("Logic", self.name, value)
+        self.updated(self, "Logic", value)

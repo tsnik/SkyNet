@@ -3,12 +3,15 @@ from twisted.internet import defer
 
 
 class SimpleDriver:
-    def __init__(self, name, updated):
+    def __init__(self, did, name, updated):
+        self.did = did
         self.name = name
         self.updated = updated
 
     def get_device_fields(self):
-        return defer.maybeDeferred({})
+        d = defer.Deferred()
+        d.callback({})
+        return d
 
     def update_device_field(self, field_name, value):
         def callb(res):

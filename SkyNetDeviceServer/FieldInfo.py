@@ -11,10 +11,13 @@ class FieldInfo:
         self.Writable = writable
         self.Value = value
 
+    def to_dict(self):
+        dic = self.__dict__
+        dic["Type"] = FieldInfo.types[type(self.Value)]
+        return dic
+
     def to_json(self):
-        dic = self.__dict__()
-        dic["Type"] = FieldInfo.types[type(self.value)]
-        return json.dumps(dic)
+        return json.dumps(self.to_dict())
 
     @staticmethod
     def create_from_dict(jdict):

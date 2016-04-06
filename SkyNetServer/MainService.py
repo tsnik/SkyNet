@@ -25,6 +25,7 @@ class MainService(service.MultiService):
         self.addService(self.deviceService)
 
     def startService(self):
+        service.MultiService.startService(self)
         d = DB.get_scripts()
         d.addCallback(self.script_load)
 
