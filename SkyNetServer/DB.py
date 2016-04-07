@@ -189,7 +189,7 @@ class DB:
         r = txn.fetchone()
         if r is None:
             txn.execute('''INSERT INTO ControlServers (ip, name) VALUES (?, ?)''', (ip, name))
-            cid = txn.lastrowid()
+            cid = txn.lastrowid
         else:
             cid = r["id"]
         for method in methods:
