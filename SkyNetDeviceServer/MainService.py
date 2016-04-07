@@ -18,7 +18,6 @@ class MainService(SNPService):
             driver = getattr(__import__('drivers.{0}'.format(device.Driver), fromlist=[device.Driver]), device.Driver)
             self.devices[self.num] = driver(self.num, device.Name, self.field_updated)
             self.num += 1
-        self.getDevices()
 
     def startService(self):
         self.server.startService()
