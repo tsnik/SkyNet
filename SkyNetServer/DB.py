@@ -1,5 +1,6 @@
 import pickle
 import json
+import sqlite3
 from twisted.enterprise import adbapi
 
 
@@ -11,7 +12,9 @@ class DB:
     @staticmethod
     def get_db():
         if DB._db is None:
-            DB._db = adbapi.ConnectionPool("sqlite3", DB.filename)
+            def callb(con):
+                con.row_factory = sqlite3.Row
+            DB._db = adbapi.ConnectionPool("sqlite3", DB.filename, cp_openfun=callb)
             d = DB._db.runInteraction(DB.init_db)
             d.addCallback(DB._init_db_callback)
         return DB._db
@@ -28,7 +31,8 @@ class DB:
               (id INTEGER PRIMARY KEY, name TEXT, device_server INTEGER,
               device_id TEXT)''')
         txn.execute('''CREATE TABLE IF NOT EXISTS RawData
-              (id INTEGER PRIMARY KEY, device INTEGER , field TEXT, value TEXT)''')
+              (id INTEGER PRIMARY KEY, device INTEGER , field TEXT,
+               value TEXT, date INTEGER DEFAULT (strftime('%s')))''')
         txn.execute('''CREATE TABLE IF NOT EXISTS Scripts
               (id INTEGER PRIMARY KEY, script TEXT)''')
 
@@ -143,14 +147,35 @@ class DB:
         return txn.fetchone()[0]
 
     @staticmethod
-    def update_devices(ip, devices):
+    def update_devices(ip, name, devices):
         db = DB.get_db()
-        return db.runInteraction(DB._update_devices, ip, devices)
+        return db.runInteraction(DB._update_devices, ip, name, devices)
 
     @staticmethod
-    def _update_devices(txn, ip, devices):
-        #  TODO: check if DeviceServer in db and add it if not
-        pass
+    def _update_devices(txn, ip, name, devices):
+        DB._check_db_ready()
+        txn.execute('''SELECT id FROM DeviceServers WHERE ip = ?''', (ip,))
+        r = txn.fetchone()
+        if r is None:
+            txn.execute('''INSERT INTO DeviceServers (ip, name) VALUES (?, ?)''', (ip, name))
+            cid = txn.lastrowid()
+        else:
+            cid = r["id"]
+        for device in devices:
+            name = device["Name"]
+            txn.execute('''SELECT id FROM Devices WHERE device_server = ? and name = ?''', (cid, name))
+            r = txn.fetchone()
+            if r is None:
+                txn.execute("INSERT INTO Devices (name, device_server, device_id) VALUES (?, ?, ?)",
+                            (name, cid, device["DevId"]))
+                did = txn.lastrowid()
+            else:
+                did = r["id"]
+                txn.execute("UPDATE Devices SET device_id = ? WHERE id = ?", (device["DevId"], did))
+            for field in device["Fields"]:
+                txn.execute('''INSERT INTO RawData (device, field, value) VALUES (?, ?, ?)''',
+                            (did, field["Name"], field["Value"]))
+        return
 
     @staticmethod
     def update_methods(ip, name, methods):
@@ -160,23 +185,23 @@ class DB:
     @staticmethod
     def _update_methods(txn, ip, name, methods):
         DB._check_db_ready()
-        txn.execute('''SELECT id FROM ControlServers WHERE ip = ?''', ip)
+        txn.execute('''SELECT id FROM ControlServers WHERE ip = ?''', (ip,))
         r = txn.fetchone()
         if r is None:
-            txn.execute('''INSERT INTO ControlServers (ip, name) VALUES (?, ?)''', ip, name)
+            txn.execute('''INSERT INTO ControlServers (ip, name) VALUES (?, ?)''', (ip, name))
             cid = txn.lastrowid()
         else:
             cid = r["id"]
         for method in methods:
             name = method["Name"]
             args = json.dumps(method["Fields"])
-            txn.execute('''SELECT id FROM Methods WHERE control_server = ?, name = ?''', cid, name)
+            txn.execute('''SELECT id FROM Methods WHERE control_server = ?, name = ?''', (cid, name))
             r = txn.fetchone()
             if r is None:
-                txn.execute("INSERT INTO Methods (name, arguments, control_server) VALUES (?, ?, ?)", name, args, cid)
+                txn.execute("INSERT INTO Methods (name, arguments, control_server) VALUES (?, ?, ?)", (name, args, cid))
             else:
                 mid = r["id"]
-                txn.execute("UPDATE Methods SET arguments = ? WHERE id = ?", args, mid)
+                txn.execute("UPDATE Methods SET arguments = ? WHERE id = ?", (args, mid))
         return
 
     @staticmethod
