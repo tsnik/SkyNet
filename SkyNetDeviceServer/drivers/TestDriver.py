@@ -22,11 +22,14 @@ class TestDriver(SimpleDriver):
     def update_integer(self, value):
         self.fields[0].Value = value
         self.updated(self, "Integer", value)
+        return self.fields[0]
 
     def update_string(self, value):
         self.fields[1].Value = value
         self.updated(self, "String", value)
+        return self.fields[1]
 
     def update_logic(self, value):
         self.fields[2].Value = value
         self.updated(self, "Logic", value)
+        return self.fields[2]

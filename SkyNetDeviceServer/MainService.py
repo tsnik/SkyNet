@@ -46,3 +46,18 @@ class MainService(SNPService):
             lambda res: [field.to_dict() for field in res.values()]) for device in self.devices.values()])
         d.addCallback(callb)
         return d
+
+    def type_gdf(self, request, reqid, protocol):
+        def callb(res):
+            protocol.sendResponse({"Type": "GDF", "Device": {"Name": device.name, "DevId":device.did, "Fields": res}},
+                                  reqid)
+        device = self.devices[request["DevId"]]
+        d = device.get_device_fields().addCallback(lambda res: [field.to_dict() for field in res.values()])
+        d.addCallback(callb)
+
+    def type_udf(self, request, reqid, protocol):
+        def callb(res):
+            protocol.sendResponse({"Type": "UDF", "DevId": request["DevId"], "Field": res.to_dict()}, reqid)
+        device = self.devices[request["DevId"]]
+        d = device.update_device_field(request["Field"], request["Value"])
+        d.addCallback(callb)
