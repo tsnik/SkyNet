@@ -1,6 +1,5 @@
 from enum import Enum
 from twisted.internet import defer
-from DB import DB
 import json
 
 
