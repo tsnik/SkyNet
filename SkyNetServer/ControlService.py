@@ -43,8 +43,9 @@ class ControlService(SNPService):
         d.addCallback(callb)
 
     def type_udf(self, request, reqid, protocol):
-        #  TODO: Request to device server
-        pass
+        def callb(res):
+            protocol.sendResponse(res, reqid)
+        self.parent.update_device_data(request["DevId"], request["FieldName"], request["Value"])
 
     def check_pass(self, request, protocol):
         if "Password" in request:
