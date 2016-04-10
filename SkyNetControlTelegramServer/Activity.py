@@ -1,9 +1,11 @@
 from twisted.internet import defer
 from enum import Enum
+from TelegramBotAPI.types.methods import sendMessage
 
 
 class Activity:
-    def __init__(self):
+    def __init__(self, manager):
+        self.manager = manager
         self.actions = {}
         self.keyboard = []
         self.text = ""
@@ -75,3 +77,38 @@ class ActivityReturn:
         assert isinstance(type, ActivityReturn.ReturnType)
         self.type = ""
         self.data = data
+
+
+class ActivityManager:
+    def __init__(self, client, default_activity):
+        self.client = client
+        self.chats = {}
+        self.default_activity = default_activity
+
+    def message_received(self, message):
+        chat_id = message.chat.id
+        if chat_id in self.chats:
+            self.chats[chat_id].on_message(message)
+        else:
+            self.start_activity(chat_id, self.default_activity(), False)
+
+    def send_message(self, chat_id, message, keyboard):
+        # TODO: Write own library or find good one instead of that
+        msg = sendMessage()
+        msg.chat_id = chat_id
+        msg.text = message
+        msg.reply_markup = '{"keyboard": ' + str(keyboard).replace("'", '"') + '}'
+        self.client.send_method(msg)
+
+    def start_activity(self, chat_id, activity, back_btn=True, **kwargs):
+        def callb(res):
+            self.chats[chat_id].pop()
+            if not len(self.chats[chat_id]):
+                self.chats.pop(chat_id)
+            return res
+        if chat_id not in self.chats:
+            self.chats[chat_id] = []
+        self.chats[chat_id].append(activity)
+        d = activity.start(chat_id, self.send_message, back_btn, kwargs)
+        d.addCallback(callb)
+        return d
