@@ -55,15 +55,15 @@ class Activity:
         self.back_btn = back_btn
         return self.deferred
 
-    def on_message(self, message):
-        if message.text == "Назад":
+    def on_message(self, text):
+        if text == "Назад":
             self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.BACK))
             self.running = False
             return
-        if message.text not in self.actions:
+        if text not in self.actions:
             self.send_message("Неверная команда", [])
             self.render()
-        self.actions[message](message)
+        self.actions[text](text)
 
     def send_message(self, message, keyboard):
         assert self.running
@@ -92,9 +92,9 @@ class ActivityManager:
         chat_id = message.chat.id
         if chat_id in self.chats:
             chat = self.chats[chat_id]
-            chat[len(chat) - 1].on_message(message)
+            chat[len(chat) - 1].on_message(message.text)
         else:
-            self.start_activity(chat_id, self.default_activity(self), False)
+            self.start_activity(chat_id, self.default_activity, False)
 
     def send_message(self, chat_id, message, keyboard):
         # TODO: Write own library or find good one instead of that
@@ -109,10 +109,14 @@ class ActivityManager:
             self.chats[chat_id].pop()
             if not len(self.chats[chat_id]):
                 self.chats.pop(chat_id)
+            else:
+                chat = self.chats[chat_id]
+                chat[len(chat) - 1].render()
             return res
         if chat_id not in self.chats:
             self.chats[chat_id] = []
-        self.chats[chat_id].append(activity)
-        d = activity.start(chat_id, self.send_message, back_btn, **kwargs)
+        act = activity(self)
+        self.chats[chat_id].append(act)
+        d = act.start(chat_id, self.send_message, back_btn, **kwargs)
         d.addCallback(callb)
         return d
