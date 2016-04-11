@@ -20,14 +20,12 @@ class Activity:
         assert name not in self.actions
         self.actions[name] = action
         if len(self.keyboard) <= row:
-            for i in range(len(self.keyboard), row):
+            for i in range(len(self.keyboard), row + 1):
                 self.keyboard.append([])
         if len(self.keyboard[row]) <= col:
-            for i in range(len(self.keyboard[row]), col):
+            for i in range(len(self.keyboard[row]), col + 1):
                 self.keyboard[row].append("")
         self.keyboard[row][col] = name
-        if self.back_btn:
-            self.keyboard.append("Назад")
 
     def gen_text(self):
         pass
@@ -36,8 +34,13 @@ class Activity:
         pass
 
     def render(self):
+        self.text = ""
+        self.keyboard = []
+        self.actions = {}
         self.gen_text()
         self.gen_keyboard()
+        if self.back_btn:
+            self.keyboard.append(["Назад"])
         assert self.running
         self.send_message(self.text, self.keyboard)
 
@@ -59,7 +62,7 @@ class Activity:
             return
         if message.text not in self.actions:
             self.send_message("Неверная команда", [])
-            return
+            self.render()
         self.actions[message](message)
 
     def send_message(self, message, keyboard):
