@@ -47,8 +47,8 @@ class Activity:
         self.chat_id = chat_id
         self._send_message = send_message
         self.kwargs = kwargs
-        self.render()
         self.running = True
+        self.render()
         self.back_btn = back_btn
         return self.deferred
 
@@ -88,9 +88,10 @@ class ActivityManager:
     def message_received(self, message):
         chat_id = message.chat.id
         if chat_id in self.chats:
-            self.chats[chat_id].on_message(message)
+            chat = self.chats[chat_id]
+            chat[len(chat) - 1].on_message(message)
         else:
-            self.start_activity(chat_id, self.default_activity(), False)
+            self.start_activity(chat_id, self.default_activity(self), False)
 
     def send_message(self, chat_id, message, keyboard):
         # TODO: Write own library or find good one instead of that
@@ -109,6 +110,6 @@ class ActivityManager:
         if chat_id not in self.chats:
             self.chats[chat_id] = []
         self.chats[chat_id].append(activity)
-        d = activity.start(chat_id, self.send_message, back_btn, kwargs)
+        d = activity.start(chat_id, self.send_message, back_btn, **kwargs)
         d.addCallback(callb)
         return d
