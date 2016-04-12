@@ -70,6 +70,64 @@ class Activity:
         self._send_message(self.chat_id, message, keyboard)
 
 
+class ListActivity(Activity):
+    DEF_ITEMS_PER_PAGE = 6
+    DEF_COL_NUM = 2
+
+    def __init__(self, manager):
+        Activity.__init__(self, manager)
+        self.items = {}
+        self.page = 0
+        self.page_num = 0
+        self.items_per_page = 0
+        self.col_num = 0
+
+    def render(self):
+        if len(self.items) == 0:
+            a = {}
+            self.items_per_page = self.kwargs.get("items_per_page", ListActivity.DEF_ITEMS_PER_PAGE)
+            self.col_num = self.kwargs.get("col_num", ListActivity.DEF_COL_NUM)
+            self.gen_list()
+            import math
+            self.page_num = int(math.ceil(float(len(self.items)) / self.items_per_page))
+        Activity.render(self)
+
+    def gen_list(self):
+        pass
+
+    def item_selected(self, id, item):
+        pass
+
+    def _item_selected(self, item):
+        rawsplit = item.split(":")
+        id = int(rawsplit[0])
+        name = ''.join(rawsplit[1:])
+        self.item_selected(id, name)
+
+    def change_page(self, message):
+        if message == "<" and self.page > 0:
+            self.page -= 1
+        elif message == ">" and self.page < self.page_num - 1:
+            self.page += 1
+        self.render()
+
+    def gen_keyboard(self):
+        start = self.page*self.items_per_page
+        stop = start + self.items_per_page
+        c = 0
+        r = 0
+        for key, item in list(self.items.items())[start:stop]:
+            self.add_button("{0}:{1}".format(str(key), item), self._item_selected, r, c)
+            c += 1
+            if c >= self.col_num:
+                c = 0
+                r += 1
+        if self.page > 0:
+            self.add_button("<", self.change_page, r+1, 0)
+        if self.page < self.page_num - 1:
+            self.add_button(">", self.change_page, r+1, 1)
+
+
 class ActivityReturn:
     class ReturnType(Enum):
         OK = 0
@@ -101,7 +159,13 @@ class ActivityManager:
         msg = sendMessage()
         msg.chat_id = chat_id
         msg.text = message
-        msg.reply_markup = '{"keyboard": ' + str(keyboard).replace("'", '"') + '}'
+        kb = False
+        for row in keyboard:
+            if len(row) > 0:
+                kb = True
+                break
+        if kb:
+            msg.reply_markup = '{"keyboard": ' + str(keyboard).replace("'", '"') + '}'
         self.client.send_method(msg)
 
     def start_activity(self, chat_id, activity, back_btn=True, **kwargs):
