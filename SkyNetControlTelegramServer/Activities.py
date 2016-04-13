@@ -1,5 +1,5 @@
-from Activity import Activity
-
+from Activity import Activity, ListActivity
+from twisted.internet import defer
 
 class WelcomeActivity(Activity):
     def gen_text(self):
@@ -22,20 +22,32 @@ class WelcomeActivity(Activity):
         self.manager.start_activity(self.chat_id, DeviceServersActivity)
 
 
-class DevicesActivity(Activity):
+class DevicesActivity(ListActivity):
     def gen_text(self):
         self.text = "Выберите устройство"
 
-    def gen_keyboard(self):
-        pass
+    @defer.inlineCallbacks
+    def gen_list(self):
+        self.items = yield self.manager.serv.get_devices()
+        yield None
+
+    def item_selected(self, id, name):
+        self.send_message(str(id), [])
+        self.send_message(name, [])
 
 
-class ScriptsActivity(Activity):
+class ScriptsActivity(ListActivity):
     def gen_text(self):
         self.text = "Выберите скрипт"
 
-    def gen_keyboard(self):
-        pass
+    @defer.inlineCallbacks
+    def gen_list(self):
+        self.items = yield self.manager.serv.get_scripts()
+        yield None
+
+    def item_selected(self, id, name):
+        self.send_message(str(id), [])
+        self.send_message(name, [])
 
 
 class DeviceServersActivity(Activity):

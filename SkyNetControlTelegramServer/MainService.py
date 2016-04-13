@@ -22,4 +22,31 @@ class MainService(SNPService):
     def startService(self):
         fact = SNProtocolClientFactory(self)
         reactor.connectTCP(self.ip, self.port, fact)
+        self.tg.parent = self
         self.tg.startService()
+
+    def connectionMade(self, protocol):
+        ip = protocol.transport.getPeer().host
+        self.peers[ip] = protocol
+
+    def get_devices(self):
+        def callb(res):
+            ret = {}
+            devices = res["Devices"]
+            for device in devices:
+                ret[int(device["ID"])] = device["Name"]
+            return ret
+        d = list(self.peers.values())[0].sendRequest({"Type": "GDL"})
+        d.addCallback(callb)
+        return d
+
+    def get_scripts(self):
+        def callb(res):
+            ret = {}
+            scripts = res["Scripts"]
+            for script in scripts:
+                ret[int(script["Id"])] = script["Name"]
+            return ret
+        d = list(self.peers.values())[0].sendRequest({"Type": "GSC", "Password": "Admin"})
+        d.addCallback(callb)
+        return d

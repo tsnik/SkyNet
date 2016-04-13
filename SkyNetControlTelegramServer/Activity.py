@@ -140,10 +140,11 @@ class ActivityReturn:
 
 
 class ActivityManager:
-    def __init__(self, client, default_activity):
+    def __init__(self, client, default_activity, serv):
         self.client = client
         self.chats = {}
         self.default_activity = default_activity
+        self.serv = serv
 
     def message_received(self, message):
         chat_id = message.chat.id
