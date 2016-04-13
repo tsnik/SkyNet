@@ -33,16 +33,17 @@ class Activity:
     def gen_keyboard(self):
         pass
 
+    @defer.inlineCallbacks
     def render(self):
         self.text = ""
         self.keyboard = []
         self.actions = {}
-        self.gen_text()
-        self.gen_keyboard()
+        yield self.gen_text()
+        yield self.gen_keyboard()
         if self.back_btn:
             self.keyboard.append(["Назад"])
-        assert self.running
         self.send_message(self.text, self.keyboard)
+        self.running = True
 
     def start(self, chat_id, send_message, back_btn=True, **kwargs):
         assert callable(send_message)
@@ -50,7 +51,6 @@ class Activity:
         self.chat_id = chat_id
         self._send_message = send_message
         self.kwargs = kwargs
-        self.running = True
         self.render()
         self.back_btn = back_btn
         return self.deferred
@@ -66,7 +66,6 @@ class Activity:
         self.actions[text](text)
 
     def send_message(self, message, keyboard):
-        assert self.running
         self._send_message(self.chat_id, message, keyboard)
 
 
@@ -82,18 +81,19 @@ class ListActivity(Activity):
         self.items_per_page = 0
         self.col_num = 0
 
+    @defer.inlineCallbacks
     def render(self):
         if len(self.items) == 0:
-            a = {}
             self.items_per_page = self.kwargs.get("items_per_page", ListActivity.DEF_ITEMS_PER_PAGE)
             self.col_num = self.kwargs.get("col_num", ListActivity.DEF_COL_NUM)
-            self.gen_list()
+            yield self.gen_list()
             import math
             self.page_num = int(math.ceil(float(len(self.items)) / self.items_per_page))
-        Activity.render(self)
+        yield Activity.render(self)
 
+    @defer.inlineCallbacks
     def gen_list(self):
-        pass
+        yield None
 
     def item_selected(self, id, item):
         pass
@@ -136,7 +136,6 @@ class ActivityReturn:
 
     def __init__(self, type, data=None):
         assert isinstance(type, ActivityReturn.ReturnType)
-        self.type = ""
         self.data = data
 
 
