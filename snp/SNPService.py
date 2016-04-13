@@ -16,7 +16,8 @@ class SNPService(service.Service):
                     return
                 try:
                     thunk(request, reqid, protocol)
-                except:
+                except Exception as e:
+                    print(e)
                     return
             else:
                 protocol.sendError(1, request)

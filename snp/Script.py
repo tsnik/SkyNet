@@ -304,7 +304,7 @@ class Script:
         return d
 
     def to_dict(self):
-        return {"id": self.id,
+        return {"Id": self.id,
                 "Name": self.name,
                 "Trigger": self.trigger.to_dict(),
                 "Action": self.action.to_dict()}

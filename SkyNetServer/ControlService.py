@@ -51,7 +51,7 @@ class ControlService(SNPService):
         if "Password" in request:
             if request["Password"] == self.config.adminpass:
                 return True
-        protocol.sendError(404, request)
+        protocol.sendError(400, request)
         return False
 
     def type_ssd(self, request, reqid, protocol):
