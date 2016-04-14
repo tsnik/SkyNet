@@ -40,6 +40,13 @@ class MainService(SNPService):
         d.addCallback(callb)
         return d
 
+    def get_device_info(self, id):
+        def callb(res):
+            return res
+        d = list(self.peers.values())[0].sendRequest({"Type": "GDF", "DevId": id})
+        d.addCallback(callb)
+        return d
+
     def get_scripts(self):
         def callb(res):
             ret = {}

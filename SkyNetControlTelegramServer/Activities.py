@@ -31,9 +31,23 @@ class DevicesActivity(ListActivity):
         self.items = yield self.manager.serv.get_devices()
         yield None
 
-    def item_selected(self, id, name):
-        self.send_message(str(id), [])
-        self.send_message(name, [])
+    def item_selected(self, DevId, name):
+        self.manager.start_activity(self.chat_id, DeviceInfoActivity, id=DevId)
+
+
+class DeviceInfoActivity(Activity):
+    @defer.inlineCallbacks
+    def gen_text(self):
+        res = yield self.manager.serv.get_device_info(self.kwargs["id"])
+        device = res["Device"]
+        self.text = device["Name"] + "\n"
+        self.text += "Поля данного устройства: \n"
+        for field in device["Fields"]:
+            self.text += field["Name"] + ": " + str(field["Value"]) + "\n"
+        yield None
+
+    def gen_keyboard(self):
+        pass
 
 
 class ScriptsActivity(ListActivity):

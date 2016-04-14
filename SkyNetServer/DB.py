@@ -250,6 +250,6 @@ FROM Devices, DeviceServers WHERE Devices.device_server=DeviceServers.id''')
     def _get_remote_device_from_local(txn, devid):
         DB._check_db_ready()
         txn.execute('''SELECT Devices.device_id as DevId, DeviceServers.ip From Devices, DeviceServers
-                    WHERE Devices.device_server = DeviceServers.id AND Devices.id = ?''', devid)
+                    WHERE Devices.device_server = DeviceServers.id AND Devices.id = ?''', str(devid))
         r = txn.fetchone()
-        return r["DevId"], r["ip"]
+        return int(r["DevId"]), r["ip"]
