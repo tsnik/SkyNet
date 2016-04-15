@@ -100,7 +100,7 @@ class ListActivity(Activity):
 
     def _item_selected(self, item):
         rawsplit = item.split(":")
-        id = int(rawsplit[0])
+        id = rawsplit[0]
         name = ''.join(rawsplit[1:])
         self.item_selected(id, name)
 

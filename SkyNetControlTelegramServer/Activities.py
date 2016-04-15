@@ -1,6 +1,7 @@
 from Activity import Activity, ListActivity
 from twisted.internet import defer
 
+
 class WelcomeActivity(Activity):
     def gen_text(self):
         self.text = "Выберите действие"
@@ -32,22 +33,29 @@ class DevicesActivity(ListActivity):
         yield None
 
     def item_selected(self, DevId, name):
-        self.manager.start_activity(self.chat_id, DeviceInfoActivity, id=DevId)
+        self.manager.start_activity(self.chat_id, DeviceInfoActivity, id=int(DevId))
 
 
-class DeviceInfoActivity(Activity):
-    @defer.inlineCallbacks
+class DeviceInfoActivity(ListActivity):
+    def __init__(self, manager):
+        ListActivity.__init__(self, manager)
+        self.fields = []
+        self.dev_name = ""
+
     def gen_text(self):
+        self.text = self.dev_name + "\n"
+        self.text += "Поля данного устройства: \n"
+        for field in self.fields:
+            self.text += field["Name"] + ": " + str(field["Value"]) + "\n"
+
+    @defer.inlineCallbacks
+    def gen_list(self):
         res = yield self.manager.serv.get_device_info(self.kwargs["id"])
         device = res["Device"]
-        self.text = device["Name"] + "\n"
-        self.text += "Поля данного устройства: \n"
-        for field in device["Fields"]:
-            self.text += field["Name"] + ": " + str(field["Value"]) + "\n"
+        self.fields = device["Fields"]
+        self.dev_name = device["Name"]
+        self.items = {field["Name"]: field["Type"] for field in self.fields if field["Writable"]}
         yield None
-
-    def gen_keyboard(self):
-        pass
 
 
 class ScriptsActivity(ListActivity):
