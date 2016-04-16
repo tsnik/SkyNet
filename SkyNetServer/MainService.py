@@ -12,8 +12,6 @@ class MainService(service.MultiService):
         self.config = Config.getconf()
         self.controlService = ControlService(self.config)
         self.deviceService = DeviceService(self.config)
-        self.controlService.setServiceParent(self)
-        self.deviceService.setServiceParent(self)
         self.scripts = {}
 
     def field_updated(self, devid, field):
@@ -23,8 +21,8 @@ class MainService(service.MultiService):
 
     def script_load(self, res):
         self.scripts = res
-        self.addService(self.controlService)
-        self.addService(self.deviceService)
+        self.controlService.setServiceParent(self)
+        self.deviceService.setServiceParent(self)
 
     def startService(self):
         service.MultiService.startService(self)
