@@ -136,6 +136,7 @@ class ActivityReturn:
 
     def __init__(self, type, data=None):
         assert isinstance(type, ActivityReturn.ReturnType)
+        self.type = type
         self.data = data
 
 
@@ -175,7 +176,8 @@ class ActivityManager:
                 self.chats.pop(chat_id)
             else:
                 chat = self.chats[chat_id]
-                chat[len(chat) - 1].render()
+                if res.type == ActivityReturn.ReturnType.BACK:
+                    chat[len(chat) - 1].render()
             return res
         if chat_id not in self.chats:
             self.chats[chat_id] = []

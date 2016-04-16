@@ -39,4 +39,4 @@ class DeviceService(SNPService):
 
     def update_device_field(self, device_server, devid, field, value):
         return self.peers[device_server].sendRequest({"Type": "UDF", "DevId": devid,
-                                                      "FieldName": field, "Value": value})
+                                                      "Field": field, "Value": value})

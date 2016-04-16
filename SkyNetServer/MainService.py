@@ -78,6 +78,7 @@ class MainService(service.MultiService):
         def callb(res):
             def callb(res):
                 res["DevId"] = devid
+                return res
             rdevid, ip = res
             return self.deviceService.update_device_field(ip, rdevid, field, value).addCallback(callb)
         d = DB.get_remote_device_from_local(devid)

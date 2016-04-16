@@ -57,3 +57,8 @@ class MainService(SNPService):
         d = list(self.peers.values())[0].sendRequest({"Type": "GSC", "Password": "Admin"})
         d.addCallback(callb)
         return d
+
+    def update_field(self, dev_id, field, value):
+        d = list(self.peers.values())[0].sendRequest({"Type": "UDF",
+                                                      "DevId": dev_id, "Field": field, "Value": value})
+        return d

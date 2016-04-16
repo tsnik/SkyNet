@@ -64,9 +64,9 @@ class DB:
     @staticmethod
     def _get_local_devid_from_remote(txn, ip, devid):
         DB._check_db_ready()
-        txn.execute('''SELECT id from DeviceServers WHERE ip = ? ''', ip)
+        txn.execute('''SELECT id from DeviceServers WHERE ip = ? ''', (ip,))
         devsid = txn.fetchone()[0]
-        txn.execute('''SELECT id from Devices WHERE device_server = ? AND device_id = ?''', devsid, devid)
+        txn.execute('''SELECT id from Devices WHERE device_server = ? AND device_id = ?''', (devsid, devid))
         return txn.fetchone()[0]
 
     @staticmethod
@@ -77,7 +77,7 @@ class DB:
     @staticmethod
     def _get_field_value(txn, devid, field):
         DB._check_db_ready()
-        txn.execute('''SELECT value FROM RawData WHERE devid = ? AND field = ? ORDER BY id DESC''', devid, field)
+        txn.execute('''SELECT value FROM RawData WHERE devid = ? AND field = ? ORDER BY id DESC''', (devid, field))
         return txn.fetchone()[0]
 
     @staticmethod
