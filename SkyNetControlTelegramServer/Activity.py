@@ -83,12 +83,12 @@ class ListActivity(Activity):
 
     @defer.inlineCallbacks
     def render(self):
-        if len(self.items) == 0:
-            self.items_per_page = self.kwargs.get("items_per_page", ListActivity.DEF_ITEMS_PER_PAGE)
-            self.col_num = self.kwargs.get("col_num", ListActivity.DEF_COL_NUM)
-            yield self.gen_list()
-            import math
-            self.page_num = int(math.ceil(float(len(self.items)) / self.items_per_page))
+        self.items = {}
+        self.items_per_page = self.kwargs.get("items_per_page", ListActivity.DEF_ITEMS_PER_PAGE)
+        self.col_num = self.kwargs.get("col_num", ListActivity.DEF_COL_NUM)
+        yield self.gen_list()
+        import math
+        self.page_num = int(math.ceil(float(len(self.items)) / self.items_per_page))
         yield Activity.render(self)
 
     @defer.inlineCallbacks
@@ -126,6 +126,46 @@ class ListActivity(Activity):
             self.add_button("<", self.change_page, r+1, 0)
         if self.page < self.page_num - 1:
             self.add_button(">", self.change_page, r+1, 1)
+
+
+class WizardActivity(Activity):
+    def __init__(self, manager):
+        Activity.__init__(self, manager)
+        self.steps = []
+        self.step_results = []
+        self.step_args = []
+
+    def step_callback(self, res, step):
+        if res.type == ActivityReturn.ReturnType.OK:
+            self.step_results.append(res.data)
+            step += 1
+            if step >= len(self.steps):
+                self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, self.step_results))
+            else:
+                self.manager.start_activity(self.chat_id, self.steps[step], self.step_args[step])\
+                    .addCallback(self.step_callback, step)
+        elif res.type == ActivityReturn.ReturnType.BACK:
+            if step > 0:
+                self.step_results.pop()
+                step -= 1
+                self.manager.start_activity(self.chat_id, self.steps[step]).addCallback(self.step_callback, step)
+            else:
+                self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.BACK))
+        else:
+            self.deferred.callback(res)
+
+    def render(self):
+        Activity.render(self)
+        self.steps = self.kwargs.get("steps", [])
+        self.step_args = self.kwargs.get("step_args", [])
+        step = 0
+        if step < len(self.steps):
+            self.manager.start_activity(self.chat_id, self.steps[step]).addCallback(self.step_callback, step)
+        else:
+            self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, self.step_results))
+
+    def gen_text(self):
+        self.text = self.kwargs["text"]
 
 
 class ActivityReturn:
