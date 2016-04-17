@@ -1,4 +1,4 @@
-from snp import SNPService, SNProtocolClientFactory
+from snp import SNPService, SNProtocolClientFactory, Script
 from Config import Config
 from twisted.internet import reactor
 from TelegramService import TelegramService
@@ -49,11 +49,9 @@ class MainService(SNPService):
 
     def get_scripts(self):
         def callb(res):
-            ret = {}
-            scripts = res["Scripts"]
-            for script in scripts:
-                ret[int(script["Id"])] = script["Name"]
-            return ret
+            scripts = {int(script["id"]): Script.create_from_dict(script)for script in res["Scripts"]}
+            ret = {script.id: script.name for script in scripts}
+            return scripts, ret
         d = list(self.peers.values())[0].sendRequest({"Type": "GSC", "Password": "Admin"})
         d.addCallback(callb)
         return d
