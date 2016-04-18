@@ -55,6 +55,11 @@ class Activity:
         self.back_btn = back_btn
         return self.deferred
 
+    def restart(self):
+        self.deferred = defer.Deferred()
+        self.render()
+        return self.deferred
+
     def on_message(self, text):
         if text == "Назад":
             self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.BACK))
@@ -128,6 +133,11 @@ class ListActivity(Activity):
             self.add_button(">", self.change_page, r+1, 1)
 
 
+class ChooseFromListActivity(ListActivity):
+    def item_selected(self, id, item):
+        self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, (id, item)))
+
+
 class WizardActivity(Activity):
     def __init__(self, manager):
         Activity.__init__(self, manager)
@@ -173,10 +183,13 @@ class ActivityReturn:
         OK = 0
         BACK = 1
         STOP = 2
+        NOTHING = 3
 
-    def __init__(self, type, data=None):
-        assert isinstance(type, ActivityReturn.ReturnType)
-        self.type = type
+    def __init__(self, return_type, data={"data": None}):
+        assert isinstance(return_type, ActivityReturn.ReturnType)
+        self.type = return_type
+        if type(data) is not dict:
+            data = {"data": data}
         self.data = data
 
 
@@ -209,8 +222,29 @@ class ActivityManager:
             msg.reply_markup = '{"keyboard": ' + str(keyboard).replace("'", '"') + '}'
         self.client.send_method(msg)
 
-    def start_activity(self, chat_id, activity, back_btn=True, **kwargs):
-        def callb(res):
+    def wizard_callback(self, res, chat_id, activities_list, step, wizard_completed):
+        if res.type == ActivityReturn.ReturnType.OK:
+            step += 1
+            if step >= len(activities_list):
+                if callable(wizard_completed):
+                    return self.wizard_callback(wizard_completed(res), chat_id, activities_list, step, wizard_completed)
+            else:
+                return self.start_activity(chat_id, activities_list[step], **res.data, add_callbacks=False)\
+                    .addCallback(self.wizard_callback, chat_id, activities_list, step, wizard_completed)\
+                    .addCallback(self.general_callback, chat_id)
+        elif res.type == ActivityReturn.ReturnType.BACK:
+            step -= 1
+            if step >= 0:
+                chat = self.chats[chat_id]
+                chat.pop()
+                chat[len(chat) - 1].restart()\
+                    .addCallback(self.wizard_callback, chat_id, activities_list, step, wizard_completed)\
+                    .addCallback(self.general_callback, chat_id)
+                return ActivityReturn(ActivityReturn.ReturnType.NOTHING)
+        return res
+
+    def general_callback(self, res, chat_id):
+        if res.type is not ActivityReturn.ReturnType.NOTHING:
             self.chats[chat_id].pop()
             if not len(self.chats[chat_id]):
                 self.chats.pop(chat_id)
@@ -218,11 +252,24 @@ class ActivityManager:
                 chat = self.chats[chat_id]
                 if res.type == ActivityReturn.ReturnType.BACK:
                     chat[len(chat) - 1].render()
-            return res
+                    # chat[len(chat) - 1].restart()
+                    return ActivityReturn(ActivityReturn.ReturnType.NOTHING)
+        return res
+
+    def start_activity(self, chat_id, activity, back_btn=True, wizard_completed=None, add_callbacks=True, **kwargs):
         if chat_id not in self.chats:
             self.chats[chat_id] = []
+        is_list = False
+        if type(activity) is list:
+            assert len(activity) > 0
+            activities_list = activity
+            activity = activity[0]
+            is_list = True
         act = activity(self)
         self.chats[chat_id].append(act)
         d = act.start(chat_id, self.send_message, back_btn, **kwargs)
-        d.addCallback(callb)
+        if add_callbacks:
+            if is_list:
+                d.addCallback(self.wizard_callback, chat_id, activities_list, 0, wizard_completed)
+            d.addCallback(self.general_callback, chat_id)
         return d
