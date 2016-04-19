@@ -5,73 +5,123 @@ from TelegramBotAPI.types.methods import sendMessage
 
 class Activity:
     def __init__(self, manager):
-        self.manager = manager
-        self.actions = {}
-        self.keyboard = []
-        self.text = ""
-        self.chat_id = None
-        self.deferred = defer.Deferred()
-        self._send_message = None
-        self.kwargs = None
-        self.running = False
-        self.back_btn = True
+        self.manager = manager  # Activity manager
+        self.actions = {}  # Mapping from buttons to methods
+        self.keyboard = []  # Telegram keyboard representation [[str]]
+        self.text = ""  # Activity text
+        self.chat_id = None  # Id of the chat where activity running
+        self.deferred = None  # Deferred which is calling when activity return result
+        self._send_message = None  # Method to send messages to telegram (chat_id, text, keyboard)
+        self.kwargs = None  # Arguments for activity
+        self.back_btn = True  # Show button back
 
-    def add_button(self, name, action, row, col):
+    def add_button(self, name, action, row=-1, col=-1):
+        """
+        Add button to keyboard
+        :param name: Button text
+        :param action: Button action
+        :param row: By default last row
+        :param col: By default last col
+        """
         assert name not in self.actions
         self.actions[name] = action
+        if row == -1:
+            row = len(self.keyboard)
         if len(self.keyboard) <= row:
             for i in range(len(self.keyboard), row + 1):
                 self.keyboard.append([])
+        if col == -1:
+            col = len(self.keyboard[row])
         if len(self.keyboard[row]) <= col:
             for i in range(len(self.keyboard[row]), col + 1):
                 self.keyboard[row].append("")
         self.keyboard[row][col] = name
 
     def gen_text(self):
-        pass
+        self.text = self.kwargs.get("text", "")
 
     def gen_keyboard(self):
         pass
 
     @defer.inlineCallbacks
     def render(self):
+        # erase data from previous renders
         self.text = ""
         self.keyboard = []
         self.actions = {}
+        # generate text and keyboard
         yield self.gen_text()
         yield self.gen_keyboard()
         if self.back_btn:
             self.keyboard.append(["Назад"])
+        # send message
         self.send_message(self.text, self.keyboard)
-        self.running = True
 
     def start(self, chat_id, send_message, back_btn=True, **kwargs):
+        """
+        Start activity
+        :param chat_id:  Id of the chat where activity running
+        :param send_message: Method to send messages to telegram (chat_id, text, keyboard)
+        :param back_btn: Show back button
+        :param kwargs: Activity params
+        :return: Deferred, which called with ActivityReturn
+        """
         assert callable(send_message)
         assert isinstance(chat_id, int)
+        self.init_defer()  # init deferred
+        # set params
         self.chat_id = chat_id
         self._send_message = send_message
         self.kwargs = kwargs
-        self.render()
         self.back_btn = back_btn
+        # do rendering
+        self.render()
         return self.deferred
 
     def restart(self):
-        self.deferred = defer.Deferred()
-        self.render()
-        return self.deferred
+        self.init_defer()  # Reinit deferred
+        self.render()  # Rendering
+        return self.deferred  # Return new deferred
 
     def on_message(self, text):
-        if text == "Назад":
+        if text == "Назад":  # Back button
             self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.BACK))
-            self.running = False
             return
-        if text not in self.actions:
+        if text not in self.actions:  # Wrong commands
             self.send_message("Неверная команда", [])
             self.render()
+            return
         self.actions[text](text)
 
     def send_message(self, message, keyboard):
+        """
+        Send message wrapper
+        :param message:
+        :param keyboard:
+        """
         self._send_message(self.chat_id, message, keyboard)
+
+    def init_defer(self):
+        self.deferred = defer.Deferred()
+        self.deferred.addCallback(self.def_callback)
+
+    def def_callback(self, res):
+        # Add input params to result for pass-thru execution
+        tmp = {}
+        tmp.update(self.kwargs)
+        tmp.update(res.data)
+        res.data = tmp
+        return res
+
+
+class LogicActivity(Activity):
+    def render(self):
+        pass
+
+    def restart(self):
+        self.deferred = defer.Deferred()
+        self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.BACK))
+        return self.deferred
 
 
 class ListActivity(Activity):
@@ -227,33 +277,36 @@ class ActivityManager:
             step += 1
             if step >= len(activities_list):
                 if callable(wizard_completed):
+                    step -= 1
                     return self.wizard_callback(wizard_completed(res), chat_id, activities_list, step, wizard_completed)
+                else:
+                    chat = self.chats[chat_id]
+                    for i in range(len(activities_list)):
+                        chat.pop()
             else:
                 return self.start_activity(chat_id, activities_list[step], **res.data, add_callbacks=False)\
-                    .addCallback(self.wizard_callback, chat_id, activities_list, step, wizard_completed)\
-                    .addCallback(self.general_callback, chat_id)
+                    .addCallback(self.wizard_callback, chat_id, activities_list, step, wizard_completed)
         elif res.type == ActivityReturn.ReturnType.BACK:
             step -= 1
+            chat = self.chats[chat_id]
+            chat.pop()
             if step >= 0:
-                chat = self.chats[chat_id]
-                chat.pop()
                 chat[len(chat) - 1].restart()\
-                    .addCallback(self.wizard_callback, chat_id, activities_list, step, wizard_completed)\
+                    .addCallback(self.wizard_callback, chat_id, activities_list, step, wizard_completed)
+            else:
+                chat[len(chat) - 1].restart()\
                     .addCallback(self.general_callback, chat_id)
-                return ActivityReturn(ActivityReturn.ReturnType.NOTHING)
         return res
 
     def general_callback(self, res, chat_id):
-        if res.type is not ActivityReturn.ReturnType.NOTHING:
-            self.chats[chat_id].pop()
-            if not len(self.chats[chat_id]):
-                self.chats.pop(chat_id)
-            else:
-                chat = self.chats[chat_id]
-                if res.type == ActivityReturn.ReturnType.BACK:
-                    chat[len(chat) - 1].render()
-                    # chat[len(chat) - 1].restart()
-                    return ActivityReturn(ActivityReturn.ReturnType.NOTHING)
+        self.chats[chat_id].pop()
+        if not len(self.chats[chat_id]):
+            self.chats.pop(chat_id)
+        else:
+            chat = self.chats[chat_id]
+            if res.type == ActivityReturn.ReturnType.BACK:
+                chat[len(chat) - 1].restart().addCallback(self.general_callback, chat_id)
+                return res
         return res
 
     def start_activity(self, chat_id, activity, back_btn=True, wizard_completed=None, add_callbacks=True, **kwargs):
@@ -271,5 +324,6 @@ class ActivityManager:
         if add_callbacks:
             if is_list:
                 d.addCallback(self.wizard_callback, chat_id, activities_list, 0, wizard_completed)
-            d.addCallback(self.general_callback, chat_id)
+            else:
+                d.addCallback(self.general_callback, chat_id)
         return d
