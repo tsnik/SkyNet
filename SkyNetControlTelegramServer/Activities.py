@@ -1,7 +1,8 @@
-from Activity import Activity, LogicActivity, ListActivity, ChooseFromListActivity, ActivityReturn, WizardActivity
+from Activity import Activity, LogicActivity, ListActivity, ActivityReturn, WizardActivity
 from twisted.internet import defer
 from snp import Script
-from snp.Script import ValueTrigger, ANDTrigger, ORTrigger, StaticFieldValue, LocalFieldValue, RemoteFieldValue
+from snp.Script import ValueTrigger, ANDTrigger, ORTrigger, StaticFieldValue, LocalFieldValue, RemoteFieldValue, \
+    ChangeFieldAction, MethodAction
 
 
 class WelcomeActivity(Activity):
@@ -168,11 +169,13 @@ class ScriptsActivity(ListActivity):
         ListActivity.gen_keyboard(self)
         self.add_button("Добавить скрипт", self.add_script)
 
+    @defer.inlineCallbacks
     def add_script(self, text):
-        self.manager.start_activity(self.chat_id,
+        yield self.manager.start_activity(self.chat_id,
                                     [EnterNameActivity, TriggerCreateActivity,
                                      ActionCreateActivity, ScriptCreateActivity],
                                     text="Введите имя сценария: ", key="script_name")
+        self.render()
 
 
 class ScriptCreateActivity(Activity):
@@ -186,8 +189,39 @@ class ScriptCreateActivity(Activity):
         yield None
 
 
-class ActionCreateActivity(Activity):
-    pass
+class ActionCreateActivity(LogicActivity):
+    @defer.inlineCallbacks
+    def render(self):
+        res = yield self.manager.start_activity(self.chat_id, [SelectItem, ActionRouterActivity],
+                                                text="Выберите тип действия: ",
+                                                list=["Изменение поля", "Вызов метода"])
+        if res.type == ActivityReturn.ReturnType.OK:
+            self.deferred.callback(res)
+        yield None
+
+
+class ActionRouterActivity(LogicActivity):
+    types = {"Изменение поля": ChangeFieldAction, "Вызоы метода": MethodAction}
+
+    @defer.inlineCallbacks
+    def render(self):
+        type = self.types[self.kwargs["selected_item"]]
+        action = None
+        if type == ChangeFieldAction:
+            res = yield self.manager.start_activity(self.chat_id, [DevicesActivity, DeviceInfoActivity,
+                                                                   FieldValueCreateActivity],
+                                                    text="Выберите тип изменения", list=["GREATER", "LESS",
+                                                                                         "EQUAL", "NOTEQUAL"])
+            if res.type == ActivityReturn.ReturnType.OK:
+                dev_id = res.data["dev_id"]
+                field_name = res.data["field_name"]
+                field_value = res.data["field_value"]
+                action = ChangeFieldAction(dev_id, field_name, field_value)
+        elif type == MethodAction:
+            pass
+        if action is not None:
+            self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, {"action": action}))
+        pass
 
 
 class TriggerCreateActivity(LogicActivity):
@@ -220,9 +254,21 @@ class TriggerRouterActivity(LogicActivity):
                 field_value = res.data["field_value"]
                 trigger = ValueTrigger(dev_id, field_name, change_type, field_value)
         elif type == ANDTrigger:
-            pass
+            self.send_message("Создание И триггера.", [[]])
+            res = yield self.manager.start_activity(self.chat_id, WizardActivity,
+                                                    steps=[TriggerCreateActivity, TriggerCreateActivity])
+            if res.type == ActivityReturn.ReturnType.OK:
+                trigger1 = res.data["data"][0]
+                trigger2 = res.data["data"][1]
+                trigger = ANDTrigger(trigger1, trigger2)
         elif type == ORTrigger:
-            pass
+            self.send_message("Создание И триггера.", [[]])
+            res = yield self.manager.start_activity(self.chat_id, WizardActivity,
+                                                    steps=[TriggerCreateActivity, TriggerCreateActivity])
+            if res.type == ActivityReturn.ReturnType.OK:
+                trigger1 = res.data["data"][0]
+                trigger2 = res.data["data"][1]
+                trigger = ORTrigger(trigger1, trigger2)
         if trigger is not None:
             self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, {"trigger": trigger}))
 

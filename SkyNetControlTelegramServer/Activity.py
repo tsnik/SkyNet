@@ -125,16 +125,21 @@ class LogicActivity(Activity):
 
 
 class ListActivity(Activity):
+    """
+    Base class for activities with list.
+    Method gen_list have to be redefined in child classes
+    Method item_selected have to be redefined in child classes
+    """
     DEF_ITEMS_PER_PAGE = 6
     DEF_COL_NUM = 2
 
     def __init__(self, manager):
         Activity.__init__(self, manager)
         self.items = {}
-        self.page = 0
-        self.page_num = 0
+        self.page = 0  # Current page
+        self.page_num = 0  # Total pages
         self.items_per_page = 0
-        self.col_num = 0
+        self.col_num = 0  # Number of columns on keyboard
 
     @defer.inlineCallbacks
     def render(self):
@@ -148,18 +153,37 @@ class ListActivity(Activity):
 
     @defer.inlineCallbacks
     def gen_list(self):
+        """
+        Generating list.
+        Fill items dictionary.
+        Have to be redefined!
+        """
         yield None
 
     def item_selected(self, id, item):
+        """
+        Handling item selection.
+        Have to be redefined!
+        :param id:
+        :param item:
+        """
         pass
 
     def _item_selected(self, item):
+        """
+        Get id and name and call item_selected.
+        :param item: User input
+        """
         rawsplit = item.split(":")
         id = rawsplit[0]
         name = ''.join(rawsplit[1:])
         self.item_selected(id, name)
 
     def change_page(self, message):
+        """
+        Handle page changes.
+        :param message:
+        """
         if message == "<" and self.page > 0:
             self.page -= 1
         elif message == ">" and self.page < self.page_num - 1:
@@ -171,24 +195,21 @@ class ListActivity(Activity):
         stop = start + self.items_per_page
         c = 0
         r = 0
+        # Add items to keyboard
         for key, item in list(self.items.items())[start:stop]:
             self.add_button("{0}:{1}".format(str(key), item), self._item_selected, r, c)
             c += 1
             if c >= self.col_num:
                 c = 0
                 r += 1
+        # Add navigation buttons to keyboard
         if self.page > 0:
             self.add_button("<", self.change_page, r+1, 0)
         if self.page < self.page_num - 1:
             self.add_button(">", self.change_page, r+1, 1)
 
 
-class ChooseFromListActivity(ListActivity):
-    def item_selected(self, id, item):
-        self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, (id, item)))
-
-
-class WizardActivity(Activity):
+class WizardActivity(LogicActivity):
     def __init__(self, manager):
         Activity.__init__(self, manager)
         self.steps = []
@@ -202,7 +223,10 @@ class WizardActivity(Activity):
             if step >= len(self.steps):
                 self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, self.step_results))
             else:
-                self.manager.start_activity(self.chat_id, self.steps[step], self.step_args[step])\
+                args = {}
+                if step < len(self.step_args):
+                    args = self.step_args[step]
+                self.manager.start_activity(self.chat_id, self.steps[step], args)\
                     .addCallback(self.step_callback, step)
         elif res.type == ActivityReturn.ReturnType.BACK:
             if step > 0:
@@ -215,7 +239,7 @@ class WizardActivity(Activity):
             self.deferred.callback(res)
 
     def render(self):
-        Activity.render(self)
+        LogicActivity.render(self)
         self.steps = self.kwargs.get("steps", [])
         self.step_args = self.kwargs.get("step_args", [])
         step = 0
@@ -229,6 +253,9 @@ class WizardActivity(Activity):
 
 
 class ActivityReturn:
+    """
+    Every activity should return instance of this class
+    """
     class ReturnType(Enum):
         OK = 0
         BACK = 1
@@ -245,17 +272,21 @@ class ActivityReturn:
 
 class ActivityManager:
     def __init__(self, client, default_activity, serv):
-        self.client = client
-        self.chats = {}
-        self.default_activity = default_activity
-        self.serv = serv
+        self.client = client  # Telegram API
+        self.chats = {}  # Chats
+        self.default_activity = default_activity  # Activity starting for new user
+        self.serv = serv  # Service, to send requests to servers
 
     def message_received(self, message):
+        """
+        Handle message from user
+        :param message:
+        """
         chat_id = message.chat.id
-        if chat_id in self.chats:
+        if chat_id in self.chats:  # Call activity message handlers
             chat = self.chats[chat_id]
             chat[len(chat) - 1].on_message(message.text)
-        else:
+        else:  # Start default_activity on first message
             self.start_activity(chat_id, self.default_activity, False)
 
     def send_message(self, chat_id, message, keyboard):
@@ -275,28 +306,28 @@ class ActivityManager:
     def wizard_callback(self, res, chat_id, activities_list, step, wizard_completed):
         if res.type == ActivityReturn.ReturnType.OK:
             step += 1
-            if step >= len(activities_list):
-                if callable(wizard_completed):
+            if step >= len(activities_list):  # if activities list finished
+                if callable(wizard_completed):  # If custom finish handler
                     step -= 1
                     return self.wizard_callback(wizard_completed(res), chat_id, activities_list, step, wizard_completed)
                 else:
                     chat = self.chats[chat_id]
-                    for i in range(len(activities_list)):
+                    for i in range(len(activities_list)):  # Remove all wizard activities from chat
                         chat.pop()
-            else:
+            else:  # Call next activity on list
                 return self.start_activity(chat_id, activities_list[step], **res.data, add_callbacks=False)\
                     .addCallback(self.wizard_callback, chat_id, activities_list, step, wizard_completed)
         elif res.type == ActivityReturn.ReturnType.BACK:
             step -= 1
             chat = self.chats[chat_id]
             chat.pop()
-            if step >= 0:
-                chat[len(chat) - 1].restart()\
+            if step >= 0:  # Call previous activity on list and return it result
+                return chat[len(chat) - 1].restart()\
                     .addCallback(self.wizard_callback, chat_id, activities_list, step, wizard_completed)
-            else:
+            else:  # Call activity before list
                 chat[len(chat) - 1].restart()\
                     .addCallback(self.general_callback, chat_id)
-        return res
+        return res  # Pass others results to next callback
 
     def general_callback(self, res, chat_id):
         self.chats[chat_id].pop()
