@@ -17,7 +17,8 @@ class WelcomeActivity(Activity):
 
     def go_to_devices(self, m):
         self.manager.start_activity(self.chat_id, [DevicesActivity, DeviceInfoActivity, FieldEdit],
-                                    wizard_completed=lambda res: ActivityReturn(ActivityReturn.ReturnType.BACK))
+                                    wizard_completed=lambda res: ActivityReturn(ActivityReturn.ReturnType.BACK),
+                                    writable=True)
 
     def go_to_scripts(self, m):
         self.manager.start_activity(self.chat_id, ScriptsActivity)
@@ -27,7 +28,6 @@ class WelcomeActivity(Activity):
 
 
 class DevicesActivity(ListActivity):
-
     def gen_text(self):
         self.text = "Выберите устройство"
 
@@ -58,7 +58,10 @@ class DeviceInfoActivity(ListActivity):
         device = res["Device"]
         self.fields = device["Fields"]
         self.dev_name = device["Name"]
-        self.items = {field["Name"]: field["Type"] for field in self.fields if field["Writable"]}
+        field_type = self.kwargs.get("field_type", None)
+        writable = self.kwargs.get("writable", None)
+        self.items = {field["Name"]: field["Type"] for field in self.fields
+                      if self.filter_f(field, field_type, writable)}
         yield None
 
     def item_selected(self, name, field_type):
@@ -74,6 +77,16 @@ class DeviceInfoActivity(ListActivity):
             yield self.manager.serv.update_field(self.kwargs["id"], name, value)
             self.render()
         yield None
+
+    @staticmethod
+    def filter_f(field, field_type, writable):
+        if field_type is not None:
+            if field["Type"] != field_type:
+                return False
+        if writable is not None:
+            if field["Writable"] != writable:
+                return False
+        return True
 
 
 class InputValue(Activity):
@@ -171,10 +184,12 @@ class ScriptsActivity(ListActivity):
 
     @defer.inlineCallbacks
     def add_script(self, text):
-        yield self.manager.start_activity(self.chat_id,
-                                    [EnterNameActivity, TriggerCreateActivity,
-                                     ActionCreateActivity, ScriptCreateActivity],
-                                    text="Введите имя сценария: ", key="script_name")
+        res = yield self.manager.start_activity(self.chat_id, [EnterNameActivity, TriggerCreateActivity,
+                                                               ActionCreateActivity, ScriptCreateActivity],
+                                                text="Введите имя сценария: ", key="script_name")
+        if res.type == ActivityReturn.ReturnType.OK:
+            script = res.data["script"]
+            yield self.manager.serv.create_script(script)
         self.render()
 
 
@@ -185,7 +200,7 @@ class ScriptCreateActivity(Activity):
         name = self.kwargs["script_name"]
         trigger = self.kwargs["trigger"]
         action = self.kwargs["action"]
-        self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, {"script": Script(action, trigger, name)}))
+        self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, {"script": Script(trigger, action, name)}))
         yield None
 
 
@@ -211,7 +226,8 @@ class ActionRouterActivity(LogicActivity):
             res = yield self.manager.start_activity(self.chat_id, [DevicesActivity, DeviceInfoActivity,
                                                                    FieldValueCreateActivity],
                                                     text="Выберите тип изменения", list=["GREATER", "LESS",
-                                                                                         "EQUAL", "NOTEQUAL"])
+                                                                                         "EQUAL", "NOTEQUAL"],
+                                                    writable=True)
             if res.type == ActivityReturn.ReturnType.OK:
                 dev_id = res.data["dev_id"]
                 field_name = res.data["field_name"]
@@ -281,6 +297,7 @@ class FieldValueCreateActivity(LogicActivity):
                                                 text="Выберите тип значения: ",
                                                 list=["Статическое значение", "Локальное поле", "Удаленное поле"])
         if res.type == ActivityReturn.ReturnType.OK:
+            res.data.pop("selected_item")
             self.deferred.callback(res)
         yield None
 
@@ -298,11 +315,20 @@ class FieldValueRouterActivity(LogicActivity):
             if res.type == ActivityReturn.ReturnType.OK:
                 value = res.data["value"]
                 field_value = StaticFieldValue(value)
-        elif type == ANDTrigger:
-            pass
-        elif type == ORTrigger:
-            pass
+        elif type == LocalFieldValue:
+            res = yield self.manager.start_activity(self.chat_id, [DevicesActivity, DeviceInfoActivity], **self.kwargs)
+            if res.type == ActivityReturn.ReturnType.OK:
+                dev_id = res.data["dev_id"]
+                field_name = res.data["field_name"]
+                field_value = LocalFieldValue(dev_id, field_name)
+        elif type == RemoteFieldValue:
+            res = yield self.manager.start_activity(self.chat_id, [DevicesActivity, DeviceInfoActivity], **self.kwargs)
+            if res.type == ActivityReturn.ReturnType.OK:
+                dev_id = res.data["dev_id"]
+                field_name = res.data["field_name"]
+                field_value = RemoteFieldValue(dev_id, field_name)
         if field_value is not None:
+            self.kwargs.pop("selected_value", None)
             self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, {"field_value": field_value}))
 
 

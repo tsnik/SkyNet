@@ -244,6 +244,7 @@ class StaticFieldValue(FieldValue):
     def to_dict(self):
         jdic = FieldValue.to_dict(self)
         jdic["Value"] = self.value
+        return jdic
 
     @staticmethod
     def create_from_dict(jdic):

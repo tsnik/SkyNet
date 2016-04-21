@@ -83,14 +83,15 @@ class DB:
     @staticmethod
     def add_script(script):
         db = DB.get_db()
-        return db.runInteraction(DB._add_script, s)
+        return db.runInteraction(DB._add_script, script)
 
     @staticmethod
     def _add_script(txn, script):
         DB._check_db_ready()
         s = pickle.dumps(script)
-        txn.execute('''INSERT INTO Scripts (script) VALUES (?)''', s)
-        script.id = txn.lastrowid()
+        txn.execute('''INSERT INTO Scripts (script) VALUES (?)''', (s,))
+        script.id = txn.lastrowid
+        DB._edit_script(txn, script)
         return script
 
     @staticmethod
@@ -102,7 +103,7 @@ class DB:
     def _edit_script(txn, script):
         DB._check_db_ready()
         s = pickle.dumps(script)
-        txn.execute('''UPDATE Scripts Set script = ? WHERE id = ?''', s, script.id)
+        txn.execute('''UPDATE Scripts Set script = ? WHERE id = ?''', (s, script.id))
         return script
 
     @staticmethod

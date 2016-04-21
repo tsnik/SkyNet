@@ -49,8 +49,8 @@ class MainService(SNPService):
 
     def get_scripts(self):
         def callb(res):
-            scripts = {int(script["id"]): Script.create_from_dict(script)for script in res["Scripts"]}
-            ret = {script.id: script.name for script in scripts}
+            scripts = {int(script["Id"]): Script.create_from_dict(script)for script in res["Scripts"]}
+            ret = {script.id: script.name for script in scripts.values()}
             return scripts, ret
         d = list(self.peers.values())[0].sendRequest({"Type": "GSC", "Password": "Admin"})
         d.addCallback(callb)
@@ -59,4 +59,8 @@ class MainService(SNPService):
     def update_field(self, dev_id, field, value):
         d = list(self.peers.values())[0].sendRequest({"Type": "UDF",
                                                       "DevId": dev_id, "Field": field, "Value": value})
+        return d
+
+    def create_script(self, script):
+        d = list(self.peers.values())[0].sendRequest({"Type": "CSC", "Script": script.to_dict(), "Password": "Admin"})
         return d
