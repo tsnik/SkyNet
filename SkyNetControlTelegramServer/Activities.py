@@ -190,7 +190,7 @@ class ScriptsActivity(ListActivity):
         if res.type == ActivityReturn.ReturnType.OK:
             script = res.data["script"]
             yield self.manager.serv.create_script(script)
-        self.render()
+            self.render()
 
 
 class ScriptCreateActivity(Activity):
@@ -274,16 +274,16 @@ class TriggerRouterActivity(LogicActivity):
             res = yield self.manager.start_activity(self.chat_id, WizardActivity,
                                                     steps=[TriggerCreateActivity, TriggerCreateActivity])
             if res.type == ActivityReturn.ReturnType.OK:
-                trigger1 = res.data["data"][0]
-                trigger2 = res.data["data"][1]
+                trigger1 = res.data["data"][0]["trigger"]
+                trigger2 = res.data["data"][1]["trigger"]
                 trigger = ANDTrigger(trigger1, trigger2)
         elif type == ORTrigger:
             self.send_message("Создание И триггера.", [[]])
             res = yield self.manager.start_activity(self.chat_id, WizardActivity,
                                                     steps=[TriggerCreateActivity, TriggerCreateActivity])
             if res.type == ActivityReturn.ReturnType.OK:
-                trigger1 = res.data["data"][0]
-                trigger2 = res.data["data"][1]
+                trigger1 = res.data["data"][0]["trigger"]
+                trigger2 = res.data["data"][1]["trigger"]
                 trigger = ORTrigger(trigger1, trigger2)
         if trigger is not None:
             self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, {"trigger": trigger}))

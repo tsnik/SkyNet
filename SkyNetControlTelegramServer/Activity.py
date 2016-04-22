@@ -79,7 +79,9 @@ class Activity:
         return self.deferred
 
     def restart(self):
-        self.init_defer()  # Reinit deferred
+        d = defer.Deferred()
+        if self.deferred.called:
+            self.init_defer()  # Reinit deferred
         self.render()  # Rendering
         return self.deferred  # Return new deferred
 
@@ -119,7 +121,6 @@ class LogicActivity(Activity):
         pass
 
     def restart(self):
-        self.deferred = defer.Deferred()
         self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.BACK))
         return self.deferred
 
@@ -325,8 +326,7 @@ class ActivityManager:
                 return chat[len(chat) - 1].restart()\
                     .addCallback(self.wizard_callback, chat_id, activities_list, step, wizard_completed)
             else:  # Call activity before list
-                chat[len(chat) - 1].restart()\
-                    .addCallback(self.general_callback, chat_id)
+                chat[len(chat) - 1].restart()
         return res  # Pass others results to next callback
 
     def general_callback(self, res, chat_id):
