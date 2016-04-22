@@ -79,9 +79,9 @@ class ValueTrigger(Trigger):
     def check_trigger(self, field):
         try:
             field = yield self.get_field(field)
-            value = yield self.value.get_value(field)
-            method = getattr(ValueTrigger, "check_{0}".format(self.type))
-            yield method(value, field)
+            value = yield self.value.get_value()
+            method = getattr(ValueTrigger, "check_{0}".format(self.type.lower()))
+            return method(value, field)
         except:  # TODO: Narrow exception
             yield False
 
@@ -98,6 +98,7 @@ class LogicalTrigger(Trigger):
     def check_trigger(self, field):
         d = defer.gatherResults([self.trigger1.check_trigger(field), self.trigger2.check_trigger(field)])
         d.addCallback(self.logic_check)
+        return d
 
     def to_dict(self):
         jdic = Trigger.to_dict(self)

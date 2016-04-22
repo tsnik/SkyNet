@@ -16,7 +16,7 @@ class MainService(service.MultiService):
 
     def field_updated(self, devid, field):
         field["DevId"] = devid
-        for script in self.scripts:
+        for script in self.scripts.values():
             script.doif(field)
 
     def script_load(self, res):
