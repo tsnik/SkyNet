@@ -104,6 +104,13 @@ class ControlService(SNPService):
             d = self.parent.delete_script(request["ScriptId"])
             d.addCallback(callb)
 
+    def type_gsd(self, request, reqid, protocol):
+        if self.check_pass(request, protocol):
+            def callb(res):
+                protocol.sendResponse({"Type": "GSD", "Servers": res}, reqid)
+            d = self.parent.get_servers()
+            d.addCallback(callb)
+
     def callMethod(self, control_server, name, **args):
         method = {"Name": name, "Fields": args}
         return self.peers[control_server].sendRequest({"Type": "CMT", "Method": method})

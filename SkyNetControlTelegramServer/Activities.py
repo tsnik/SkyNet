@@ -341,9 +341,17 @@ class SelectItem(ListActivity):
         self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, {"selected_item": name}))
 
 
-class DeviceServersActivity(Activity):
+class DeviceServersActivity(ListActivity):
     def gen_text(self):
         self.text = "Выберите сервер устройств"
 
+    @defer.inlineCallbacks
+    def gen_list(self):
+        self.items = yield self.manager.serv.get_servers()
+        yield None
+
+    #def item_selected(self, dev_id, name):
+    #    self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, {"dev_id": int(dev_id)}))
+
     def gen_keyboard(self):
-        pass
+        super().gen_keyboard()

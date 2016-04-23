@@ -63,3 +63,11 @@ class MainService(SNPService):
     def create_script(self, script):
         d = list(self.peers.values())[0].sendRequest({"Type": "CSC", "Script": script.to_dict(), "Password": "Admin"})
         return d
+
+    def get_servers(self):
+        def callb(res):
+            servers = {int(server["Id"]): server["Name"] for server in res["Servers"]}
+            return servers
+        d = list(self.peers.values())[0].sendRequest({"Type": "GSD", "Password": "Admin"})
+        d.addCallback(callb)
+        return d

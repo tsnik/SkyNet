@@ -82,3 +82,11 @@ class MainService(service.MultiService):
         d = DB.get_remote_device_from_local(devid)
         d.addCallback(callb)
         return d
+
+    def get_servers(self):
+        def callb(res):
+            servers = [{"Id": row["id"], "Name": row["name"], "IP": row["ip"], "Port": row["port"]} for row in res]
+            return servers
+        d = DB.get_device_servers()
+        d.addCallback(callb)
+        return d
