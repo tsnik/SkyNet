@@ -42,7 +42,7 @@ class MainService(SNPService):
 
     def get_device_info(self, id):
         def callb(res):
-            return res
+            return res["Device"]
         d = list(self.peers.values())[0].sendRequest({"Type": "GDF", "DevId": id})
         d.addCallback(callb)
         return d
@@ -50,8 +50,7 @@ class MainService(SNPService):
     def get_scripts(self):
         def callb(res):
             scripts = {int(script["Id"]): Script.create_from_dict(script)for script in res["Scripts"]}
-            ret = {script.id: script.name for script in scripts.values()}
-            return scripts, ret
+            return scripts
         d = list(self.peers.values())[0].sendRequest({"Type": "GSC", "Password": "Admin"})
         d.addCallback(callb)
         return d

@@ -54,8 +54,7 @@ class DeviceInfoActivity(ListActivity):
 
     @defer.inlineCallbacks
     def gen_list(self):
-        res = yield self.manager.serv.get_device_info(self.kwargs["dev_id"])
-        device = res["Device"]
+        device = yield self.manager.serv.get_device_info(self.kwargs["dev_id"])
         self.fields = device["Fields"]
         self.dev_name = device["Name"]
         field_type = self.kwargs.get("field_type", None)
@@ -65,18 +64,9 @@ class DeviceInfoActivity(ListActivity):
         yield None
 
     def item_selected(self, name, field_type):
-        self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, {"dev_id": self.kwargs["dev_id"],
-                                                                             "dev_name": self.dev_name,
+        self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, {"dev_name": self.dev_name,
                                                                              "field_name": name,
                                                                              "field_type": field_type}))
-
-    @defer.inlineCallbacks
-    def field_update_callback(self, res):
-        if res.type == ActivityReturn.ReturnType.OK:
-            name, value = res.data
-            yield self.manager.serv.update_field(self.kwargs["id"], name, value)
-            self.render()
-        yield None
 
     @staticmethod
     def filter_f(field, field_type, writable):
@@ -143,10 +133,13 @@ class FieldEdit(LogicActivity):
 
     def update_field(self, dev_id, name, value):
         d = self.manager.serv.update_field(dev_id, name, value)
-        d.addCallback(self.field_updated)
+        d.addCallbacks(self.field_updated, self.field_update_error)
 
     def field_updated(self, res):
         self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK))
+
+    def field_update_error(self, err):
+        pass
 
     @staticmethod
     def is_int(s):
@@ -163,7 +156,7 @@ class FieldEdit(LogicActivity):
 
 class ScriptsActivity(ListActivity):
     def __init__(self, manager):
-        ListActivity.__init__(self, manager)
+        super().__init__(manager)
         self.scripts = {}
 
     def gen_text(self):
@@ -171,7 +164,8 @@ class ScriptsActivity(ListActivity):
 
     @defer.inlineCallbacks
     def gen_list(self):
-        self.scripts, self.items = yield self.manager.serv.get_scripts()
+        self.scripts = yield self.manager.serv.get_scripts()
+        self.items = {script.id: script.name for script in self.scripts.values()}
         yield None
 
     def item_selected(self, id, name):
@@ -179,7 +173,7 @@ class ScriptsActivity(ListActivity):
         self.send_message(name, [])
 
     def gen_keyboard(self):
-        ListActivity.gen_keyboard(self)
+        super().gen_keyboard()
         self.add_button("Добавить скрипт", self.add_script)
 
     @defer.inlineCallbacks
@@ -220,9 +214,9 @@ class ActionRouterActivity(LogicActivity):
 
     @defer.inlineCallbacks
     def render(self):
-        type = self.types[self.kwargs["selected_item"]]
+        action_type = self.types[self.kwargs["selected_item"]]
         action = None
-        if type == ChangeFieldAction:
+        if action_type == ChangeFieldAction:
             res = yield self.manager.start_activity(self.chat_id, [DevicesActivity, DeviceInfoActivity,
                                                                    FieldValueCreateActivity],
                                                     text="Выберите тип изменения", list=["GREATER", "LESS",
@@ -233,7 +227,7 @@ class ActionRouterActivity(LogicActivity):
                 field_name = res.data["field_name"]
                 field_value = res.data["field_value"]
                 action = ChangeFieldAction(dev_id, field_name, field_value)
-        elif type == MethodAction:
+        elif action_type == MethodAction:
             pass
         if action is not None:
             self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, {"action": action}))
@@ -256,9 +250,9 @@ class TriggerRouterActivity(LogicActivity):
 
     @defer.inlineCallbacks
     def render(self):
-        type = TriggerRouterActivity.types[self.kwargs["selected_item"]]
+        trigger_type = TriggerRouterActivity.types[self.kwargs["selected_item"]]
         trigger = None
-        if type == ValueTrigger:
+        if trigger_type == ValueTrigger:
             res = yield self.manager.start_activity(self.chat_id, [DevicesActivity, DeviceInfoActivity,
                                                                    SelectItem, FieldValueCreateActivity],
                                                     text="Выберите тип изменения", list=["GREATER", "LESS",
@@ -269,22 +263,17 @@ class TriggerRouterActivity(LogicActivity):
                 change_type = res.data["selected_item"]
                 field_value = res.data["field_value"]
                 trigger = ValueTrigger(dev_id, field_name, change_type, field_value)
-        elif type == ANDTrigger:
-            self.send_message("Создание И триггера.", [[]])
+        elif trigger_type == ANDTrigger or trigger_type == ORTrigger:
+            if trigger_type == ANDTrigger:
+                self.send_message("Создание И триггера.", [[]])
+            elif trigger_type == ORTrigger:
+                self.send_message("Создание ИЛИ триггера.", [[]])
             res = yield self.manager.start_activity(self.chat_id, WizardActivity,
                                                     steps=[TriggerCreateActivity, TriggerCreateActivity])
             if res.type == ActivityReturn.ReturnType.OK:
                 trigger1 = res.data["data"][0]["trigger"]
                 trigger2 = res.data["data"][1]["trigger"]
-                trigger = ANDTrigger(trigger1, trigger2)
-        elif type == ORTrigger:
-            self.send_message("Создание И триггера.", [[]])
-            res = yield self.manager.start_activity(self.chat_id, WizardActivity,
-                                                    steps=[TriggerCreateActivity, TriggerCreateActivity])
-            if res.type == ActivityReturn.ReturnType.OK:
-                trigger1 = res.data["data"][0]["trigger"]
-                trigger2 = res.data["data"][1]["trigger"]
-                trigger = ORTrigger(trigger1, trigger2)
+                trigger = trigger_type(trigger1, trigger2)
         if trigger is not None:
             self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, {"trigger": trigger}))
 
@@ -297,7 +286,6 @@ class FieldValueCreateActivity(LogicActivity):
                                                 text="Выберите тип значения: ",
                                                 list=["Статическое значение", "Локальное поле", "Удаленное поле"])
         if res.type == ActivityReturn.ReturnType.OK:
-            res.data.pop("selected_item")
             self.deferred.callback(res)
         yield None
 
@@ -328,7 +316,7 @@ class FieldValueRouterActivity(LogicActivity):
                 field_name = res.data["field_name"]
                 field_value = RemoteFieldValue(dev_id, field_name)
         if field_value is not None:
-            self.kwargs.pop("selected_value", None)
+            self.kwargs = {}
             self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, {"field_value": field_value}))
 
 

@@ -79,7 +79,6 @@ class Activity:
         return self.deferred
 
     def restart(self):
-        d = defer.Deferred()
         if self.deferred.called:
             self.init_defer()  # Reinit deferred
         self.render()  # Rendering
@@ -121,6 +120,8 @@ class LogicActivity(Activity):
         pass
 
     def restart(self):
+        if self.deferred.called:
+            self.init_defer()  # Reinit deferred
         self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.BACK))
         return self.deferred
 
@@ -211,6 +212,10 @@ class ListActivity(Activity):
 
 
 class WizardActivity(LogicActivity):
+    """
+    Accept list of Activities and activity arguments
+    Returns list of activity results
+    """
     def __init__(self, manager):
         Activity.__init__(self, manager)
         self.steps = []
@@ -331,19 +336,18 @@ class ActivityManager:
 
     def general_callback(self, res, chat_id):
         self.chats[chat_id].pop()
-        if not len(self.chats[chat_id]):
+        if not len(self.chats[chat_id]):  # Remove chat if all activities closed
             self.chats.pop(chat_id)
         else:
             chat = self.chats[chat_id]
-            if res.type == ActivityReturn.ReturnType.BACK:
-                chat[len(chat) - 1].restart().addCallback(self.general_callback, chat_id)
-                return res
+            if res.type == ActivityReturn.ReturnType.BACK:  # Restart previous activity on back button
+                chat[len(chat) - 1].restart()
         return res
 
     def start_activity(self, chat_id, activity, back_btn=True, wizard_completed=None, add_callbacks=True, **kwargs):
-        if chat_id not in self.chats:
+        if chat_id not in self.chats:  # Create chat if not exists
             self.chats[chat_id] = []
-        is_list = False
+        is_list = False  # List of activities passed
         if type(activity) is list:
             assert len(activity) > 0
             activities_list = activity
@@ -353,7 +357,7 @@ class ActivityManager:
         self.chats[chat_id].append(act)
         d = act.start(chat_id, self.send_message, back_btn, **kwargs)
         if add_callbacks:
-            if is_list:
+            if is_list:  # Select right callback
                 d.addCallback(self.wizard_callback, chat_id, activities_list, 0, wizard_completed)
             else:
                 d.addCallback(self.general_callback, chat_id)
