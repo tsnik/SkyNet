@@ -24,7 +24,7 @@ class WelcomeActivity(Activity):
         self.manager.start_activity(self.chat_id, ScriptsActivity)
 
     def go_to_device_servers(self, m):
-        self.manager.start_activity(self.chat_id, DeviceServersActivity)
+        self.manager.start_activity(self.chat_id, [DeviceServersActivity, ServerInfo])
 
 
 class DevicesActivity(ListActivity):
@@ -342,16 +342,35 @@ class SelectItem(ListActivity):
 
 
 class DeviceServersActivity(ListActivity):
+    def __init__(self, manager):
+        super().__init__(manager)
+        self.servers = []
+
     def gen_text(self):
         self.text = "Выберите сервер устройств"
 
     @defer.inlineCallbacks
     def gen_list(self):
-        self.items = yield self.manager.serv.get_servers()
+        servers = yield self.manager.serv.get_servers()
+        self.servers = {server["Id"]: server for server in servers}
+        self.items = {int(server["Id"]): server["Name"] for server in servers}
         yield None
 
-    #def item_selected(self, dev_id, name):
-    #    self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, {"dev_id": int(dev_id)}))
+    def item_selected(self, server_id, name):
+        self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, {"server": self.servers[int(server_id)]}))
 
     def gen_keyboard(self):
         super().gen_keyboard()
+
+
+class ServerInfo(Activity):
+    def gen_text(self):
+        server = self.kwargs["server"]
+        self.text = "Имя сервера: {0}\n" \
+                    "Адрес: {1}:{2}".format(server["Name"], server["IP"], server["Port"])
+
+    def gen_keyboard(self):
+        self.add_button("Удалить", self.remove_server)
+
+    def remove_server(self, message):
+        pass

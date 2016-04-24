@@ -66,8 +66,7 @@ class MainService(SNPService):
 
     def get_servers(self):
         def callb(res):
-            servers = {int(server["Id"]): server["Name"] for server in res["Servers"]}
-            return servers
+            return res["Servers"]
         d = list(self.peers.values())[0].sendRequest({"Type": "GSD", "Password": "Admin"})
         d.addCallback(callb)
         return d
