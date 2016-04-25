@@ -1,5 +1,7 @@
 from snp import SNPService, SNProtocolClientFactory
 from DB import DB
+from twisted.internet import defer
+from twisted.python import failure
 
 
 class DeviceService(SNPService):
@@ -7,6 +9,7 @@ class DeviceService(SNPService):
     def __init__(self, config):
         SNPService.__init__(self)
         self.config = config
+        self.connecting_servers = {}
 
     def startService(self):
         def callb(res):
@@ -28,11 +31,14 @@ class DeviceService(SNPService):
         pass
 
     def type_wel(self, request, reqid, protocol):
-        def callb(res):
+        def callb(res, ip):
             protocol.sendResponse({"Name": self.config.name}, reqid)
+            if ip in self.connecting_servers:
+                self.connecting_servers[ip].callback(res)
         ip = protocol.transport.getPeer().host
+        port = protocol.transport.getPeer().port
         self.peers[ip] = protocol
-        DB.update_devices(ip, request["Name"], request["Devices"]).addCallback(callb)
+        DB.update_devices(ip, port, request["Name"], request["Devices"]).addCallback(callb, ip)
 
     def get_device_fields(self, device_server, devid):
         return self.peers[device_server].sendRequest({"Type": "GDF", "DevId": devid})
@@ -40,3 +46,16 @@ class DeviceService(SNPService):
     def update_device_field(self, device_server, devid, field, value):
         return self.peers[device_server].sendRequest({"Type": "UDF", "DevId": devid,
                                                       "Field": field, "Value": value})
+
+    def add_server(self, ip, port, pin):
+        fact = SNProtocolClientFactory(self)
+        from twisted.internet import reactor
+        reactor.connectTCP(ip, port, fact)
+        d = defer.Deferred()
+        self.connecting_servers[ip] = d
+        return d
+
+    def clientConnectionFailed(self, connector, reason):
+        ip = connector.getDestination().host
+        if ip in self.connecting_servers:
+            self.connecting_servers[ip].errback(Exception(ip))

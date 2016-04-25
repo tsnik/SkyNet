@@ -94,7 +94,7 @@ class Activity:
             return
         self.actions[text](text)
 
-    def send_message(self, message, keyboard):
+    def send_message(self, message, keyboard=[[]]):
         """
         Send message wrapper
         :param message:
@@ -221,24 +221,18 @@ class WizardActivity(LogicActivity):
         self.steps = []
         self.step_results = []
         self.step_args = []
+        self.step = 0
 
     def step_callback(self, res, step):
         if res.type == ActivityReturn.ReturnType.OK:
             self.step_results.append(res.data)
-            step += 1
-            if step >= len(self.steps):
-                self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, self.step_results))
-            else:
-                args = {}
-                if step < len(self.step_args):
-                    args = self.step_args[step]
-                self.manager.start_activity(self.chat_id, self.steps[step], args)\
-                    .addCallback(self.step_callback, step)
+            self.step += 1
+            self.render()
         elif res.type == ActivityReturn.ReturnType.BACK:
             if step > 0:
                 self.step_results.pop()
-                step -= 1
-                self.manager.start_activity(self.chat_id, self.steps[step]).addCallback(self.step_callback, step)
+                self.step -= 1
+                self.render()
             else:
                 self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.BACK))
         else:
@@ -248,9 +242,12 @@ class WizardActivity(LogicActivity):
         LogicActivity.render(self)
         self.steps = self.kwargs.get("steps", [])
         self.step_args = self.kwargs.get("step_args", [])
-        step = 0
-        if step < len(self.steps):
-            self.manager.start_activity(self.chat_id, self.steps[step]).addCallback(self.step_callback, step)
+        if self.step < len(self.steps):
+            args = {}
+            if self.step < len(self.step_args):
+                args = self.step_args[self.step]
+            self.manager.start_activity(self.chat_id, self.steps[self.step], **args)\
+                .addCallback(self.step_callback, self.step)
         else:
             self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK, self.step_results))
 

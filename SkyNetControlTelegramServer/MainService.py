@@ -70,3 +70,11 @@ class MainService(SNPService):
         d = list(self.peers.values())[0].sendRequest({"Type": "GSD", "Password": "Admin"})
         d.addCallback(callb)
         return d
+
+    def add_server(self, ip, port, pin):
+        def callb(res):
+            return res["Server"]
+        d = list(self.peers.values())[0].sendRequest({"Type": "RSD", "Password": "Admin",
+                                                      "IP": ip, "Port": port, "Pin": pin})
+        d.addCallback(callb)
+        return d

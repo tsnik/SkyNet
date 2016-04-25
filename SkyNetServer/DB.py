@@ -148,20 +148,22 @@ class DB:
         return txn.fetchone()[0]
 
     @staticmethod
-    def update_devices(ip, name, devices):
+    def update_devices(ip, port, name, devices):
         db = DB.get_db()
-        return db.runInteraction(DB._update_devices, ip, name, devices)
+        return db.runInteraction(DB._update_devices, ip, port, name, devices)
 
     @staticmethod
-    def _update_devices(txn, ip, name, devices):
+    def _update_devices(txn, ip, port, name, devices):
         DB._check_db_ready()
-        txn.execute('''SELECT id FROM DeviceServers WHERE ip = ?''', (ip,))
-        r = txn.fetchone()
-        if r is None:
-            txn.execute('''INSERT INTO DeviceServers (ip, name) VALUES (?, ?)''', (ip, name))
-            cid = txn.lastrowid()
+        txn.execute('''SELECT * FROM DeviceServers WHERE ip = ?''', (ip,))
+        server = txn.fetchone()
+        if server is None:
+            txn.execute('''INSERT INTO DeviceServers (ip, port, name) VALUES (?, ?, ?)''', (ip, port, name))
+            cid = txn.lastrowid
+            txn.execute('''SELECT * FROM DeviceServers WHERE ip = ?''', (ip,))
+            server = txn.fetchone()
         else:
-            cid = r["id"]
+            cid = server["id"]
         for device in devices:
             name = device["Name"]
             txn.execute('''SELECT id FROM Devices WHERE device_server = ? and name = ?''', (cid, name))
@@ -169,14 +171,14 @@ class DB:
             if r is None:
                 txn.execute("INSERT INTO Devices (name, device_server, device_id) VALUES (?, ?, ?)",
                             (name, cid, device["DevId"]))
-                did = txn.lastrowid()
+                did = txn.lastrowid
             else:
                 did = r["id"]
                 txn.execute("UPDATE Devices SET device_id = ? WHERE id = ?", (device["DevId"], did))
             for field in device["Fields"]:
                 txn.execute('''INSERT INTO RawData (device, field, value) VALUES (?, ?, ?)''',
                             (did, field["Name"], field["Value"]))
-        return
+        return server
 
     @staticmethod
     def update_methods(ip, name, methods):

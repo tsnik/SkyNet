@@ -60,7 +60,13 @@ class ControlService(SNPService):
 
     def type_rsd(self, request, reqid, protocol):
         if self.check_pass(request, protocol):
-            pass
+            def callb(res):
+                protocol.sendResponse({"Type": "RSD", "Server": res}, reqid)
+
+            def errb(err):
+                protocol.sendError(404, request)
+            d = self.parent.add_server(request["IP"], request["Port"], request["Pin"])
+            d.addCallbacks(callb, errb)
 
     def type_rnd(self, request, reqid, protocol):
         if self.check_pass(request, protocol):

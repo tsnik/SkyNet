@@ -90,3 +90,11 @@ class MainService(service.MultiService):
         d = DB.get_device_servers()
         d.addCallback(callb)
         return d
+
+    def add_server(self, ip, port, pin):
+        def callb(res):
+            server = {"Id": res["id"], "Name": res["name"], "IP": res["ip"], "Port": res["port"]}
+            return server
+        d = self.deviceService.add_server(ip, port, pin)
+        d.addCallback(callb)
+        return d

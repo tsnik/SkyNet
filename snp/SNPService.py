@@ -10,7 +10,7 @@ class SNPService(service.Service):
         ip = protocol.transport.getPeer().host
         if "Type" in request:
             reqtype = request["Type"]
-            if ip in self.peers or reqtype=="WEL" or reqtype == "AUR":
+            if ip in self.peers or reqtype == "WEL" or reqtype == "AUR":
                 thunk = getattr(self, 'type_%s' % reqtype.lower(), None)
                 if thunk is None:
                     return
@@ -20,7 +20,7 @@ class SNPService(service.Service):
                     print(e)
                     return
             else:
-                protocol.sendError(1, request)
+                protocol.sendError(400, request)
 
     def connectionMade(self, protocol):
         pass

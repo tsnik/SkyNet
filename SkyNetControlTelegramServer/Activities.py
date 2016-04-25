@@ -12,7 +12,7 @@ class WelcomeActivity(Activity):
     def gen_keyboard(self):
         self.back_btn = False
         self.add_button("Устройства", self.go_to_devices, 0, 0)
-        self.add_button("Скрипты", self.go_to_scripts, 1, 0)
+        self.add_button("Сценарии", self.go_to_scripts, 1, 0)
         self.add_button("Сервера устройств", self.go_to_device_servers, 2, 0)
 
     def go_to_devices(self, m):
@@ -361,6 +361,14 @@ class DeviceServersActivity(ListActivity):
 
     def gen_keyboard(self):
         super().gen_keyboard()
+        self.add_button("Добавить", self.add_server)
+
+    @defer.inlineCallbacks
+    def add_server(self, message):
+        res = yield self.manager.start_activity(self.chat_id, AddServerActivity)
+        if res.type == ActivityReturn.ReturnType.OK:
+            self.render()
+        return
 
 
 class ServerInfo(Activity):
@@ -374,3 +382,27 @@ class ServerInfo(Activity):
 
     def remove_server(self, message):
         pass
+
+
+class AddServerActivity(LogicActivity):
+    @defer.inlineCallbacks
+    def render(self):
+        res = yield self.manager.start_activity(self.chat_id, WizardActivity,
+                                                steps=[InputValue, InputValue, InputValue],
+                                                step_args=[{"field_name": "Адрес сервера", "field_type": "str"},
+                                                           {"field_name": "Порт", "field_type": "int"},
+                                                           {"field_name": "PIN", "field_type": "int"}])
+        if res.type == ActivityReturn.ReturnType.OK:
+            results = res.data["data"]
+            d = self.manager.serv.add_server(results[0]["value"], results[1]["value"], results[2]["value"])
+            d.addCallbacks(self.server_added, self.server_add_error)
+            d.addBoth(self.final_call)
+
+    def server_added(self, res):
+        self.send_message("Сервер успешно добавлен")
+
+    def server_add_error(self, err):
+        self.send_message("Ошибка при добавлении сервера")
+
+    def final_call(self, res):
+        self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.OK))
