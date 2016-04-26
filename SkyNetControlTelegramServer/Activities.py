@@ -169,8 +169,7 @@ class ScriptsActivity(ListActivity):
         yield None
 
     def item_selected(self, id, name):
-        self.send_message(str(id), [])
-        self.send_message(name, [])
+        self.manager.start_activity(self.chat_id, ScriptInfo, script=self.scripts[int(id)])
 
     def gen_keyboard(self):
         super().gen_keyboard()
@@ -185,6 +184,20 @@ class ScriptsActivity(ListActivity):
             script = res.data["script"]
             yield self.manager.serv.create_script(script)
             self.render()
+
+
+class ScriptInfo(Activity):
+    def gen_text(self):
+        script = self.kwargs["script"]
+        self.text = str(script.to_dict())
+
+    def gen_keyboard(self):
+        self.add_button("Удалить", self.remove_script)
+
+    @defer.inlineCallbacks
+    def remove_script(self, message):
+        yield self.manager.serv.remove_script(self.kwargs["script"].id)
+        self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.BACK))
 
 
 class ScriptCreateActivity(Activity):

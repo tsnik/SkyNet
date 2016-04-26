@@ -55,6 +55,10 @@ class MainService(SNPService):
         d.addCallback(callb)
         return d
 
+    def remove_script(self, id):
+        d = list(self.peers.values())[0].sendRequest({"Type": "DSC", "ScriptId": id, "Password": "Admin"})
+        return d
+
     def update_field(self, dev_id, field, value):
         d = list(self.peers.values())[0].sendRequest({"Type": "UDF",
                                                       "DevId": dev_id, "Field": field, "Value": value})

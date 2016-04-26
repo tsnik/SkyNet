@@ -114,7 +114,7 @@ class DB:
     @staticmethod
     def _delete_script(txn, sid):
         DB._check_db_ready()
-        txn.execute('''DELETE FROM Scripts WHERE id = ?''', sid)
+        txn.execute('''DELETE FROM Scripts WHERE id = ?''', (sid,))
         return sid
 
     @staticmethod
