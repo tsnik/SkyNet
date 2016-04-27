@@ -233,8 +233,6 @@ class WizardActivity(LogicActivity):
                 self.step_results.pop()
                 self.step -= 1
                 self.render()
-            else:
-                self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.BACK))
         else:
             self.deferred.callback(res)
 
