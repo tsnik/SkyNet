@@ -137,9 +137,9 @@ class Action:
     jtype = "DEF"
 
     @staticmethod
-    def create_from_dict(jdic):
+    def create_from_dict(jdic, serv=None):
         try:
-            return action_types[jdic["Type"]].create_from_dict(jdic)
+            return action_types[jdic["Type"]].create_from_dict(jdic, serv)
         except KeyError:
             raise ValueError("No such action type exists")
 
@@ -149,20 +149,23 @@ class Action:
     def to_dict(self):
         return {"Type": self.jtype}
 
+    def set_serv(self, serv):
+        self.serv = serv
+
 
 class ChangeFieldAction(Action):
     jtype = "CHF"
 
-    def __init__(self, devid, field, value):
+    def __init__(self, devid, field, value, serv=None):
         self.devid = devid
         self.field = field
         self.value = value
+        self.serv = serv
 
     def execute(self):
         def callb(res):
-            # TODO: Call to remote server
-            pass
-
+            if self.serv != None:
+                return self.serv.update_device_field(self.devid, self.field, res)
         d = self.value.get_value()
         d.addCallback(callb)
         return d
@@ -175,9 +178,9 @@ class ChangeFieldAction(Action):
         return jdict
 
     @staticmethod
-    def create_from_dict(jdic):
+    def create_from_dict(jdic, serv=None):
         return ChangeFieldAction(jdic["DevId"], jdic["FieldName"],
-                                 FieldValue.create_from_dict(jdic["Value"]))
+                                 FieldValue.create_from_dict(jdic["Value"]), serv)
 
 
 class MethodAction(Action):
@@ -202,7 +205,7 @@ class MultiAction(Action):
         return rdict
 
     @staticmethod
-    def create_from_dict(jdic):
+    def create_from_dict(jdic, serv=None):
         actions = list(map(Action.create_from_dic), jdic["Actions"])
         return MultiAction(actions)
 
@@ -289,7 +292,7 @@ class RemoteFieldValue(DynamicFieldValue):
 
 
 class Script:
-    def __init__(self, trigger, action, name, id = 0):
+    def __init__(self, trigger, action, name, id=0):
         self.trigger = trigger
         self.action = action
         self.name = name
@@ -315,12 +318,12 @@ class Script:
         return json.dumps(self.to_dict())
 
     @staticmethod
-    def create_from_dict(jdic):
+    def create_from_dict(jdic, serv=None):
         sid = 0
         if "Id" in jdic:
             sid = jdic["Id"]
         return Script(Trigger.create_from_dict(jdic["Trigger"]),
-                      Action.create_from_dict(jdic["Action"]), jdic["Name"], sid)
+                      Action.create_from_dict(jdic["Action"], serv), jdic["Name"], sid)
 
 
 action_types = {"CHF": ChangeFieldAction,

@@ -21,6 +21,8 @@ class MainService(service.MultiService):
 
     def script_load(self, res):
         self.scripts = res
+        for script in self.scripts.values():
+            script.action.set_serv(self)
         self.controlService.setServiceParent(self)
         self.deviceService.setServiceParent(self)
 
@@ -30,6 +32,7 @@ class MainService(service.MultiService):
         d.addCallback(self.script_load)
 
     def script_changed(self, script):
+        script.action.set_serv(self)
         self.scripts[script.id] = script
         return script
 
