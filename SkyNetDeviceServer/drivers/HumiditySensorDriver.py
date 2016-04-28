@@ -34,6 +34,7 @@ class HumiditySensorDriver(SimpleDriver):
         value = value.decode("utf-8")
         value = value.split(":")
         if value[0][0] == 'A' and int(value[0][1:]) == 0:
+            self.updated(self, "SensorData", int(value[1]))
             self.fields[0].Value = int(value[1])
 
     def get_updates(self):

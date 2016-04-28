@@ -23,6 +23,7 @@ class DeviceService(SNPService):
         ip = protocol.transport.getPeer().host
 
         def callb(res):
+            protocol.sendResponse(request, reqid)
             self.parent.field_updated(res, request["Field"])
         DB.get_local_devid_from_remote(ip, request["DevId"]).addCallback(callb)
 
