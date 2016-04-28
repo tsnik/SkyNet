@@ -53,6 +53,7 @@ void receiveData()
     int pin = line.substring(0, div_index).toInt();
     int value = line.substring(div_index + 1).toInt();
     pinMode(pin, OUTPUT);
+    line = "";
     if(value == 0)
     {
       digitalWrite(pin, LOW);
@@ -73,8 +74,9 @@ int getLine()
     {
       return line.length();
     }
-    line += inbyte;
+    line += (char)inbyte;
   }
   return -1;
 }
+
 
