@@ -1,19 +1,25 @@
 from Activity import Activity, LogicActivity, ListActivity, ActivityReturn, WizardActivity
 from twisted.internet import defer
-from snp import Script
+from snp import Script, SNError
 from snp.Script import ValueTrigger, ANDTrigger, ORTrigger, StaticFieldValue, LocalFieldValue, RemoteFieldValue, \
     ChangeFieldAction, MethodAction
 
 
 class WelcomeActivity(Activity):
+    def __init__(self, manager):
+        super().__init__(manager)
+        self.sudo_pass = None
+
     def gen_text(self):
         self.text = "Выберите действие"
 
     def gen_keyboard(self):
         self.back_btn = False
         self.add_button("Устройства", self.go_to_devices, 0, 0)
-        self.add_button("Сценарии", self.go_to_scripts, 1, 0)
-        self.add_button("Сервера устройств", self.go_to_device_servers, 2, 0)
+        self.actions["sudo"] = self.enter_sudo
+        if self.sudo_pass:
+            self.add_button("Сценарии", self.go_to_scripts, 1, 0)
+            self.add_button("Сервера устройств", self.go_to_device_servers, 2, 0)
 
     def go_to_devices(self, m):
         self.manager.start_activity(self.chat_id, [DevicesActivity, DeviceInfoActivity, FieldEdit],
@@ -21,10 +27,25 @@ class WelcomeActivity(Activity):
                                     writable=True)
 
     def go_to_scripts(self, m):
-        self.manager.start_activity(self.chat_id, ScriptsActivity)
+        self.manager.start_activity(self.chat_id, ScriptsActivity, password=self.sudo_pass)
 
     def go_to_device_servers(self, m):
-        self.manager.start_activity(self.chat_id, [DeviceServersActivity, ServerInfo])
+        self.manager.start_activity(self.chat_id, [DeviceServersActivity, ServerInfo], password=self.sudo_pass)
+
+    @defer.inlineCallbacks
+    def enter_sudo(self, m):
+        if self.sudo_pass:
+            self.sudo_pass = None
+        else:
+            res = yield self.manager.start_activity(self.chat_id, InputValue, text="Введите пароль:")
+            if res.type == ActivityReturn.ReturnType.OK:
+                try:
+                    password = res.data["value"]
+                    res = yield self.manager.serv.get_servers(password)
+                    self.sudo_pass = password
+                except SNError:
+                    pass
+        yield self.render()
 
 
 class DevicesActivity(ListActivity):
@@ -83,6 +104,9 @@ class InputValue(Activity):
     types = {"int": "число", "str": "строка"}
 
     def gen_text(self):
+        if "text" in self.kwargs:
+            self.text = self.kwargs["text"]
+            return
         if "dev_name" in self.kwargs:
             self.text += "Редактируем устройтво {0}:\n".format(self.kwargs["dev_name"])
         if self.kwargs["field_type"] == "bool":
@@ -92,11 +116,11 @@ class InputValue(Activity):
                                                                   self.types[self.kwargs["field_type"]])
 
     def gen_keyboard(self):
-        if self.kwargs["field_type"] == "bool":
+        if self.kwargs.get("field_type", "str") == "bool":
             self.keyboard = [["Да", "Нет"]]
 
     def on_message(self, text):
-        field_type = self.kwargs["field_type"]
+        field_type = self.kwargs.get("field_type", "str")
         if text != "Назад":
             value = None
             if field_type == "str":
@@ -164,12 +188,12 @@ class ScriptsActivity(ListActivity):
 
     @defer.inlineCallbacks
     def gen_list(self):
-        self.scripts = yield self.manager.serv.get_scripts()
+        self.scripts = yield self.manager.serv.get_scripts(self.kwargs["password"])
         self.items = {script.id: script.name for script in self.scripts.values()}
         yield None
 
     def item_selected(self, id, name):
-        self.manager.start_activity(self.chat_id, ScriptInfo, script=self.scripts[int(id)])
+        self.manager.start_activity(self.chat_id, ScriptInfo, script=self.scripts[int(id)], password=self.kwargs["password"])
 
     def gen_keyboard(self):
         super().gen_keyboard()
@@ -179,7 +203,8 @@ class ScriptsActivity(ListActivity):
     def add_script(self, text):
         res = yield self.manager.start_activity(self.chat_id, [EnterNameActivity, TriggerCreateActivity,
                                                                ActionCreateActivity, ScriptCreateActivity],
-                                                text="Введите имя сценария: ", key="script_name")
+                                                text="Введите имя сценария: ", key="script_name",
+                                                password=self.kwargs["password"])
         if res.type == ActivityReturn.ReturnType.OK:
             script = res.data["script"]
             yield self.manager.serv.create_script(script)
@@ -196,7 +221,7 @@ class ScriptInfo(Activity):
 
     @defer.inlineCallbacks
     def remove_script(self, message):
-        yield self.manager.serv.remove_script(self.kwargs["script"].id)
+        yield self.manager.serv.remove_script(self.kwargs["script"].id, self.kwargs["password"])
         self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.BACK))
 
 
@@ -364,7 +389,7 @@ class DeviceServersActivity(ListActivity):
 
     @defer.inlineCallbacks
     def gen_list(self):
-        servers = yield self.manager.serv.get_servers()
+        servers = yield self.manager.serv.get_servers(self.kwargs["password"])
         self.servers = {server["Id"]: server for server in servers}
         self.items = {int(server["Id"]): server["Name"] for server in servers}
         yield None
@@ -378,7 +403,7 @@ class DeviceServersActivity(ListActivity):
 
     @defer.inlineCallbacks
     def add_server(self, message):
-        res = yield self.manager.start_activity(self.chat_id, AddServerActivity)
+        res = yield self.manager.start_activity(self.chat_id, AddServerActivity, password=self.kwargs["password"])
         if res.type == ActivityReturn.ReturnType.OK:
             self.render()
         return
@@ -407,7 +432,8 @@ class AddServerActivity(LogicActivity):
                                                            {"field_name": "PIN", "field_type": "int"}])
         if res.type == ActivityReturn.ReturnType.OK:
             results = res.data["data"]
-            d = self.manager.serv.add_server(results[0]["value"], results[1]["value"], results[2]["value"])
+            d = self.manager.serv.add_server(results[0]["value"], results[1]["value"], results[2]["value"],
+                                             self.kwargs["password"])
             d.addCallbacks(self.server_added, self.server_add_error)
             d.addBoth(self.final_call)
 

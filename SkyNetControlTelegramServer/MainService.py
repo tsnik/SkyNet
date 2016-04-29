@@ -47,16 +47,16 @@ class MainService(SNPService):
         d.addCallback(callb)
         return d
 
-    def get_scripts(self):
+    def get_scripts(self, password):
         def callb(res):
             scripts = {int(script["Id"]): Script.create_from_dict(script)for script in res["Scripts"]}
             return scripts
-        d = list(self.peers.values())[0].sendRequest({"Type": "GSC", "Password": "Admin"})
+        d = list(self.peers.values())[0].sendRequest({"Type": "GSC", "Password": password})
         d.addCallback(callb)
         return d
 
-    def remove_script(self, id):
-        d = list(self.peers.values())[0].sendRequest({"Type": "DSC", "ScriptId": id, "Password": "Admin"})
+    def remove_script(self, id, password):
+        d = list(self.peers.values())[0].sendRequest({"Type": "DSC", "ScriptId": id, "Password": password})
         return d
 
     def update_field(self, dev_id, field, value):
@@ -64,21 +64,21 @@ class MainService(SNPService):
                                                       "DevId": dev_id, "Field": field, "Value": value})
         return d
 
-    def create_script(self, script):
-        d = list(self.peers.values())[0].sendRequest({"Type": "CSC", "Script": script.to_dict(), "Password": "Admin"})
+    def create_script(self, script, password):
+        d = list(self.peers.values())[0].sendRequest({"Type": "CSC", "Script": script.to_dict(), "Password": password})
         return d
 
-    def get_servers(self):
+    def get_servers(self, password):
         def callb(res):
             return res["Servers"]
-        d = list(self.peers.values())[0].sendRequest({"Type": "GSD", "Password": "Admin"})
+        d = list(self.peers.values())[0].sendRequest({"Type": "GSD", "Password": password})
         d.addCallback(callb)
         return d
 
-    def add_server(self, ip, port, pin):
+    def add_server(self, ip, port, pin, password):
         def callb(res):
             return res["Server"]
-        d = list(self.peers.values())[0].sendRequest({"Type": "RSD", "Password": "Admin",
+        d = list(self.peers.values())[0].sendRequest({"Type": "RSD", "Password": password,
                                                       "IP": ip, "Port": port, "Pin": pin})
         d.addCallback(callb)
         return d

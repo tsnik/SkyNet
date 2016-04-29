@@ -23,8 +23,8 @@ class Activity:
         :param row: By default last row
         :param col: By default last col
         """
-        assert name not in self.actions
-        self.actions[name] = action
+        assert name.lower() not in self.actions
+        self.actions[name.lower()] = action
         if row == -1:
             row = len(self.keyboard)
         if len(self.keyboard) <= row:
@@ -88,11 +88,11 @@ class Activity:
         if text == "Назад":  # Back button
             self.deferred.callback(ActivityReturn(ActivityReturn.ReturnType.BACK))
             return
-        if text not in self.actions:  # Wrong commands
+        if text.lower() not in self.actions:  # Wrong commands
             self.send_message("Неверная команда", [])
             self.render()
             return
-        self.actions[text](text)
+        self.actions[text.lower()](text)
 
     def send_message(self, message, keyboard=[[]]):
         """
