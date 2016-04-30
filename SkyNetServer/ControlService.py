@@ -1,5 +1,6 @@
 from snp import SNPService, SNProtocolServerFactory
 from twisted.application import internet
+from twisted.internet import ssl
 from DB import DB
 from snp.Script import Script
 
@@ -13,7 +14,9 @@ class ControlService(SNPService):
         self.port = int(config.port)
         self.iface = config.iface
         self.db = DB.get_db()
-        self.ControlServer = internet.TCPServer(self.port, self.factory, interface=self.iface)
+        sslcontext = ssl.DefaultOpenSSLContextFactory('keys/' + self.config.name + '.key',
+                                                      'keys/' + self.config.name + '.crt')
+        self.ControlServer = internet.SSLServer(self.port, self.factory, sslcontext, interface=self.iface)
 
     def connectionMade(self, protocol):
         ip = protocol.transport.getPeer().host

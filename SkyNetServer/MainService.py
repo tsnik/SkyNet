@@ -27,6 +27,8 @@ class MainService(service.MultiService):
         self.deviceService.setServiceParent(self)
 
     def startService(self):
+        from snp import create_self_signed_cert
+        create_self_signed_cert("keys", self.config.name)
         service.MultiService.startService(self)
         d = DB.get_scripts()
         d.addCallback(self.script_load)

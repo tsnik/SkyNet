@@ -13,10 +13,10 @@ class DeviceService(SNPService):
 
     def startService(self):
         def callb(res):
-            from twisted.internet import reactor
+            from twisted.internet import reactor, ssl
             for dev in res:
                 fact = SNProtocolClientFactory(self)
-                reactor.connectTCP(dev[1], dev[2], fact)
+                reactor.connectSSL(dev[1], dev[2], fact, ssl.ClientContextFactory())
         DB.get_device_servers().addCallback(callb)
 
     def type_fch(self, request, reqid, protocol):

@@ -1,6 +1,6 @@
-from snp import SNPService, SNProtocolServerFactory
+from snp import SNPService, SNProtocolServerFactory, CertManager
 from Config import Config
-from twisted.internet import defer
+from twisted.internet import defer, ssl
 from twisted.application import internet
 
 
@@ -11,7 +11,8 @@ class MainService(SNPService):
         self.port = int(self.config.port)
         self.iface = self.config.iface
         self.factory = SNProtocolServerFactory(self)
-        self.server = internet.TCPServer(self.port, self.factory, interface=self.iface)
+        self.cert_manager = CertManager("keys", "skynet", self.config.name)
+        self.server = self.cert_manager.create_server(self.port, self.factory, self.iface)
         self.devices = {}
         self.num = 0
         for device in self.config.devices:
@@ -20,6 +21,8 @@ class MainService(SNPService):
             self.num += 1
 
     def startService(self):
+        from snp import create_self_signed_cert
+        create_self_signed_cert("keys", self.config.name)
         self.server.startService()
 
     def field_updated(self, device, field_name, value):

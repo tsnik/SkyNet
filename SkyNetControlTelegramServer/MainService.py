@@ -1,6 +1,6 @@
-from snp import SNPService, SNProtocolClientFactory, Script
+from snp import SNPService, SNProtocolClientFactory, Script, CertManager
 from Config import Config
-from twisted.internet import reactor
+from twisted.internet import reactor, ssl
 from TelegramService import TelegramService
 
 
@@ -8,10 +8,11 @@ class MainService(SNPService):
     def __init__(self):
         SNPService.__init__(self)
         self.config = Config.getconf()
-        self.name = self.config.Name
-        self.port = int(self.config.SkyNetServer.Port)
-        self.ip = self.config.SkyNetServer.IP
-        self.tg = TelegramService(self.config.Token)
+        self.name = self.config.name
+        self.port = int(self.config.server.Port)
+        self.ip = self.config.server.IP
+        self.tg = TelegramService(self.config.token)
+        self.cert_manager = CertManager("keys", "skynet", self.name)
 
     def type_wel(self, request, reqid, protocol):
         protocol.sendResponse({"Type": "WEL", "Name": self.name, "Methods": []}, reqid)
@@ -20,8 +21,12 @@ class MainService(SNPService):
         pass
 
     def startService(self):
+        from snp import create_self_signed_cert
+        create_self_signed_cert("keys", self.config.name)
         fact = SNProtocolClientFactory(self)
-        reactor.connectTCP(self.ip, self.port, fact)
+        self.cert_manager.connect_to_server(self.ip, self.port, fact)
+        //reactor.connectSSL(self.ip, self.port, fact, ssl.ClientContextFactory())
+
         self.tg.parent = self
         self.tg.startService()
 
