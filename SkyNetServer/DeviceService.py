@@ -1,4 +1,4 @@
-from snp import SNPService, SNProtocolClientFactory
+from snp import SNPService, SNProtocolClientFactory, CertManager
 from DB import DB
 from twisted.internet import defer
 from twisted.python import failure
@@ -10,13 +10,13 @@ class DeviceService(SNPService):
         SNPService.__init__(self)
         self.config = config
         self.connecting_servers = {}
+        self.cert_manager = CertManager("keys", "device_servers", self.config.name)
 
     def startService(self):
         def callb(res):
-            from twisted.internet import reactor, ssl
             for dev in res:
                 fact = SNProtocolClientFactory(self)
-                reactor.connectSSL(dev[1], dev[2], fact, ssl.ClientContextFactory())
+                self.cert_manager.connect_to_server(dev[1], dev[2], fact)
         DB.get_device_servers().addCallback(callb)
 
     def type_fch(self, request, reqid, protocol):
@@ -50,8 +50,7 @@ class DeviceService(SNPService):
 
     def add_server(self, ip, port, pin):
         fact = SNProtocolClientFactory(self)
-        from twisted.internet import reactor
-        reactor.connectTCP(ip, port, fact)
+        self.cert_manager.connect_to_server(ip, port, fact)
         d = defer.Deferred()
         self.connecting_servers[ip] = d
         return d

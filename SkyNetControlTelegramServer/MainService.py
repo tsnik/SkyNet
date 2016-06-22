@@ -25,7 +25,6 @@ class MainService(SNPService):
         create_self_signed_cert("keys", self.config.name)
         fact = SNProtocolClientFactory(self)
         self.cert_manager.connect_to_server(self.ip, self.port, fact)
-        //reactor.connectSSL(self.ip, self.port, fact, ssl.ClientContextFactory())
 
         self.tg.parent = self
         self.tg.startService()

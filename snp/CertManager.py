@@ -48,6 +48,7 @@ class CertManager:
         self.name = name
         self.key_folder = key_folder
         self.peers_subfolder = peers_subfolder
+        create_self_signed_cert(self.key_folder, self.name)
 
     def create_server(self, port, factory, iface):
         sslcontext = ssl.DefaultOpenSSLContextFactory(self.key_folder + '/' + self.name + '.key',

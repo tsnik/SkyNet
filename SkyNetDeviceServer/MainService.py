@@ -26,8 +26,9 @@ class MainService(SNPService):
         self.server.startService()
 
     def field_updated(self, device, field_name, value):
-        list(self.peers.values())[0].sendRequest({"Type": "FCH", "DevId": device.did,
-                                                  "Field": {"Name": field_name, "Value": value}})
+        if len(list(self.peers.values())) > 0:
+            list(self.peers.values())[0].sendRequest({"Type": "FCH", "DevId": device.did,
+                                                      "Field": {"Name": field_name, "Value": value}})
 
     def connectionMade(self, protocol):
         def callb(res):

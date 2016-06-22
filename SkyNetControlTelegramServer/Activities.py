@@ -207,7 +207,7 @@ class ScriptsActivity(ListActivity):
                                                 password=self.kwargs["password"])
         if res.type == ActivityReturn.ReturnType.OK:
             script = res.data["script"]
-            yield self.manager.serv.create_script(script)
+            yield self.manager.serv.create_script(script, self.kwargs["password"])
             self.render()
 
 
